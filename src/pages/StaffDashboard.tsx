@@ -3,9 +3,11 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useReservations } from '@/context/ReservationContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function StaffDashboard() {
     const { metrics, reservations, resetData } = useReservations();
+    const { user } = useAuth();
 
     // Get recent reservations
     const recentReservations = reservations
@@ -34,17 +36,19 @@ export default function StaffDashboard() {
                     description="Hotel Operations & Revenue Overview"
                 />
 
-                {/* Reset Data Button */}
-                <button
-                    onClick={() => {
-                        if (confirm('Are you sure you want to reset all system data? This will clear all reservations and guests.')) {
-                            resetData();
-                        }
-                    }}
-                    className="px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
-                >
-                    Reset System Data
-                </button>
+                {/* Reset Data Button - Managers Only */}
+                {user?.staffData?.Role === 'Manager' && (
+                    <button
+                        onClick={() => {
+                            if (confirm('Are you sure you want to reset all system data? This will clear all reservations and guests.')) {
+                                resetData();
+                            }
+                        }}
+                        className="px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                    >
+                        Reset System Data
+                    </button>
+                )}
             </div>
 
             {/* Key Metrics */}

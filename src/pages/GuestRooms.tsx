@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bed, Users, Wifi, Wind, Star } from 'lucide-react';
 import { GuestBookingDialog } from '@/components/GuestBookingDialog';
 import { RoomScheduleDialog } from '@/components/RoomScheduleDialog';
 import { useReservations } from '@/context/ReservationContext';
+
 
 // Helper to get image based on room type
 const getRoomImage = (type: string) => {
@@ -35,13 +36,47 @@ export default function GuestRooms() {
     const { rooms, checkAvailability } = useReservations();
     const [checkIn, setCheckIn] = useState('');
     const [checkOut, setCheckOut] = useState('');
+    const [debugInfo, setDebugInfo] = useState<string>('Testing direct fetch...');
+
+    // Direct diagnostic fetch — bypasses context entirely
+    useEffect(() => {
+        // Test 1: Raw fetch (bypasses supabase-js completely)
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        
+        setDebugInfo(`ENV: url=${url ? 'SET' : 'MISSING'}, key=${key ? key.substring(0,10)+'...' : 'MISSING'}`);
+
+        if (!url || !key) {
+            setDebugInfo('ENV VARS MISSING — .env file not loaded by Vite');
+            return;
+        }
+
+        fetch(`${url}/rest/v1/room?select=room_id,room_number,status`, {
+            headers: {
+                'apikey': key,
+                'Authorization': `Bearer ${key}`,
+            }
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(t => { throw new Error(`HTTP ${res.status}: ${t}`); });
+            }
+            return res.json();
+        })
+        .then(data => {
+            setDebugInfo(`RAW FETCH OK: ${data.length} rooms. Context has ${rooms.length}. First: ${JSON.stringify(data[0]?.room_number)}`);
+        })
+        .catch(err => {
+            setDebugInfo(`RAW FETCH FAILED: ${err.message}`);
+        });
+    }, [rooms.length]);
 
     // Enrich rooms with their type details
     const displayRooms = rooms.map(room => {
         const type = room.roomType;
         const isAvailable = checkIn && checkOut
             ? checkAvailability(room.Room_ID, checkIn, checkOut)
-            : room.Status === 'Available'; // Default to current status if no dates
+            : room.Status === 'Available';
 
         return {
             ...room,
@@ -49,7 +84,7 @@ export default function GuestRooms() {
             price: type?.Base_Rate || 0,
             image: getRoomImage(type?.Type_Name || ''),
             capacity: getRoomCapacity(type?.Type_Name || ''),
-            isBookable: isAvailable && room.Status !== 'Maintenance' // Can't book maintenance rooms
+            isBookable: isAvailable && room.Status !== 'Maintenance'
         };
     });
 
@@ -162,6 +197,8 @@ export default function GuestRooms() {
                 <div className="text-center py-12">
                     <Bed className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <p className="text-lg font-medium text-muted-foreground">No rooms found in the system.</p>
+                    <p className="text-sm mt-2 text-blue-600 font-mono">{debugInfo}</p>
+                    <p className="text-xs mt-1 text-muted-foreground">Context rooms: {rooms.length}</p>
                 </div>
             )}
         </div>

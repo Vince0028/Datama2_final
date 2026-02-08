@@ -4,7 +4,6 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { useReservations } from '@/context/ReservationContext';
-import { roomTypes } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -23,10 +22,11 @@ export default function Rooms() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('All');
   const [typeFilter, setTypeFilter] = useState<FilterType>('All');
 
-  const enrichedRooms = rooms.map(room => {
-    const type = roomTypes.find(rt => rt.RoomType_ID === room.RoomType_ID)!;
-    return { ...room, roomType: type };
-  });
+  // Use real data from context, no need to map mock types if context already provides it
+  // But context maps roomType from DB. 
+  // If DB has roomType, we use it. If not, we might need a fallback.
+  // The context already maps it to `roomType` property.
+  const enrichedRooms = rooms;
 
   const filteredRooms = enrichedRooms.filter(room => {
     if (statusFilter !== 'All' && room.Status !== statusFilter) return false;
@@ -79,14 +79,14 @@ export default function Rooms() {
           >
             All
           </Button>
-          {roomTypes.map((type) => (
+          {(Array.from(new Set(rooms.map(r => r.roomType?.Type_Name).filter(Boolean))) as string[]).map((typeName) => (
             <Button
-              key={type.RoomType_ID}
-              variant={typeFilter === type.Type_Name ? 'default' : 'outline'}
+              key={typeName}
+              variant={typeFilter === typeName ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTypeFilter(type.Type_Name)}
+              onClick={() => setTypeFilter(typeName)}
             >
-              {type.Type_Name}
+              {typeName}
             </Button>
           ))}
         </div>
@@ -137,7 +137,7 @@ export default function Rooms() {
                 Update Status
               </label>
               <Select
-                defaultValue={room.Status}
+                value={room.Status}
                 onValueChange={(value) => handleStatusChange(room.Room_ID, value)}
               >
                 <SelectTrigger className="w-full bg-background/50">

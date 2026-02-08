@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, rawQuery, rawMutate } from '@/lib/supabase';
 import type { AuthUser } from '@/types/auth';
 import type { Guest } from '@/types/hotel';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ interface AuthContextType {
     user: AuthUser | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isInitializing: boolean;
     login: (email: string, password: string, userType: 'Guest' | 'Staff') => Promise<boolean>;
     signup: (email: string, password: string, guestData: Partial<Guest>) => Promise<boolean>;
     logout: () => void;
@@ -17,48 +18,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(true);
 
-    // Fetch user details based on email
+    // Fetch user details based on email with timeout protection
     const fetchUserDetails = async (email: string) => {
         try {
-            // Check Staff first
-            const { data: staffData, error: staffError } = await supabase
-                .from('staff') // Note: Table names are case-sensitive usually, but postgres often lowercases. Assuming 'Staff' or 'staff'.
-                .select('*')
-                .eq('email', email) // Assuming case-insensitive match or exact match
-                .single();
+            // Query staff and guest tables in PARALLEL instead of sequentially
+            const [staffRes, guestRes] = await Promise.all([
+                rawQuery('staff', { filters: `email=eq.${encodeURIComponent(email)}` }),
+                rawQuery('guest', { filters: `email=eq.${encodeURIComponent(email)}` }),
+            ]);
 
-            if (staffData && !staffError) {
-                const authUser: AuthUser = {
-                    User_ID: staffData.Staff_ID, // Using Staff_ID as User_ID for now or fetch from UserAccount
+            const staffData = staffRes.data?.[0] || null;
+            const guestData = guestRes.data?.[0] || null;
+
+            if (staffData) {
+                setUser({
+                    User_ID: staffData.staff_id || staffData.Staff_ID,
                     Email: email,
                     User_Type: 'Staff',
                     Guest_ID: null,
-                    Staff_ID: staffData.Staff_ID,
+                    Staff_ID: staffData.staff_id || staffData.Staff_ID,
                     staffData: {
-                        First_Name: staffData.first_name || staffData.First_Name, // Handle potential casing differences
+                        First_Name: staffData.first_name || staffData.First_Name,
                         Last_Name: staffData.last_name || staffData.Last_Name,
                         Role: staffData.role || staffData.Role,
                     },
-                };
-                setUser(authUser);
+                });
                 return;
             }
 
-            // Check Guest
-            const { data: guestData, error: guestError } = await supabase
-                .from('guest')
-                .select('*')
-                .eq('email', email)
-                .single();
-
-            if (guestData && !guestError) {
-                const authUser: AuthUser = {
-                    User_ID: guestData.Guest_ID,
+            if (guestData) {
+                setUser({
+                    User_ID: guestData.guest_id || guestData.Guest_ID,
                     Email: email,
                     User_Type: 'Guest',
-                    Guest_ID: guestData.Guest_ID,
+                    Guest_ID: guestData.guest_id || guestData.Guest_ID,
                     Staff_ID: null,
                     guestData: {
                         First_Name: guestData.first_name || guestData.First_Name,
@@ -66,50 +62,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         Email: guestData.email || guestData.Email,
                         Phone: guestData.phone || guestData.Phone
                     },
-                };
-                setUser(authUser);
+                });
                 return;
             }
 
-            // Fallback: Authenticated but no record found (Shouldn't happen ideally)
-            console.warn("User authenticated but no Guest/Staff record found.");
-            // We can optionally create a Guest record here if missing, but better to handle in signup
+            console.warn('User authenticated but no Guest/Staff record found.');
             setUser(null);
-
         } catch (error) {
-            console.error("Error fetching user details:", error);
-            setUser(null);
+            console.error('Error fetching user details:', error);
         }
     };
 
-    // Initialize Auth
+    // Initialize Auth — use onAuthStateChange as the single source of truth
+    // This fires immediately with the cached session (no network round-trip)
+    // and also handles future sign-in/sign-out events.
     useEffect(() => {
-        const initializeAuth = async () => {
-            setIsLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
+        let initialised = false;
 
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user?.email) {
                 await fetchUserDetails(session.user.email);
             } else {
                 setUser(null);
             }
-            setIsLoading(false);
-        };
-
-        initializeAuth();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user?.email) {
-                setIsLoading(true);
-                await fetchUserDetails(session.user.email);
-                setIsLoading(false);
-            } else {
-                setUser(null);
-                setIsLoading(false);
+            // Mark init complete on the first event (INITIAL_SESSION)
+            if (!initialised) {
+                initialised = true;
+                setIsInitializing(false);
             }
         });
 
-        return () => subscription.unsubscribe();
+        // Safety timeout — if onAuthStateChange never fires (edge case), unblock the UI
+        const safetyTimer = setTimeout(() => {
+            if (!initialised) {
+                console.warn('Auth init safety timeout reached');
+                initialised = true;
+                setUser(null);
+                setIsInitializing(false);
+            }
+        }, 3000);
+
+        return () => {
+            clearTimeout(safetyTimer);
+            subscription.unsubscribe();
+        };
     }, []);
 
     const login = async (email: string, password: string, userType: 'Guest' | 'Staff'): Promise<boolean> => {
@@ -126,29 +122,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Auth state change listener will handle fetching user details
-        // We wait a bit to ensure state updates or check manually
-        // But for better UX, we can just return true.
-        // However, we want to ensure the UserType matches!
-
-        // Wait for user to be populated
-        // This is a bit tricky with async event listener. 
-        // We can manually fetch here to verify role immediately.
-
-        // Let's verify role locally before returning
-        // Note: The listener runs in parallel.
-
-        // Quick verification:
+        // Verify staff role — use maybeSingle (no timeout wrapper needed, Supabase is fast)
         if (userType === 'Staff') {
-            const { data: staff } = await supabase.from('staff').select('*').eq('email', email).single();
-            if (!staff) {
+            try {
+                const staffCheck = await rawQuery('staff', { select: 'staff_id', filters: `email=eq.${encodeURIComponent(email)}` });
+                const staff = staffCheck.data?.[0] || null;
+
+                if (!staff) {
+                    await supabase.auth.signOut();
+                    toast.error("Unauthorized: No staff account found.");
+                    setIsLoading(false);
+                    return false;
+                }
+            } catch (e) {
+                console.error("Staff verification error:", e);
                 await supabase.auth.signOut();
-                toast.error("Unauthorized: No staff account found.");
+                toast.error("Could not verify staff role. Please try again.");
                 setIsLoading(false);
                 return false;
             }
         }
 
         toast.success("Logged in successfully!");
+
+        // Force update context immediately (onAuthStateChange may already be doing this)
+        await fetchUserDetails(email);
+
+        setIsLoading(false);
         return true;
     };
 
@@ -168,39 +168,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // 2. Create Guest Record
-        const { data: newGuest, error: guestError } = await supabase
-            .from('guest')
-            .insert([{
-                First_Name: guestData.First_Name,
-                Last_Name: guestData.Last_Name,
-                Email: email,
-                Phone: guestData.Phone,
-                Middle_Name: '', // Optional
-                Address: '',
-                City: '',
-                Postal_Code: '',
-            }])
-            .select()
-            .single();
+        const { data: newGuest, error: guestError } = await rawMutate('guest', 'POST', {
+            body: {
+                first_name: guestData.First_Name,
+                last_name: guestData.Last_Name,
+                email: email,
+                phone: guestData.Phone,
+                middle_name: '',
+                address: '',
+                city: '',
+                postal_code: '',
+            },
+            returnData: true,
+            single: true,
+        });
 
         if (guestError) {
             console.error("Error creating guest record:", guestError);
             toast.error("Account created, but failed to save profile.");
-            // Potentially delete auth user or handle cleanup
             setIsLoading(false);
             return false;
         }
 
         // 3. Create UserAccount Record (Optional but per schema)
         if (newGuest) {
-            const { error: accError } = await supabase
-                .from('useraccount')
-                .insert([{
-                    Email: email,
-                    Password_Hash: 'supbase-managed', // We don't store real hash
-                    User_Type: 'Guest',
-                    Guest_ID: newGuest.Guest_ID
-                }]);
+            const { error: accError } = await rawMutate('useraccount', 'POST', {
+                body: {
+                    email: email,
+                    password_hash: 'supabase-managed',
+                    user_type: 'Guest',
+                    guest_id: newGuest.guest_id
+                },
+            });
             if (accError) console.error("Error linking UserAccount:", accError);
         }
 
@@ -216,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isInitializing, login, signup, logout }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,14 +9,37 @@ import { Briefcase, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function StaffLogin() {
     const navigate = useNavigate();
-    const { login, isLoading } = useAuth();
+    const { login, isLoading, isInitializing, isAuthenticated, user } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
+    // Redirect if already logged in as staff (wait for init to complete)
+    useEffect(() => {
+        if (!isInitializing && isAuthenticated && user?.User_Type === 'Staff') {
+            navigate('/staff/dashboard', { replace: true });
+        }
+    }, [isInitializing, isAuthenticated, user, navigate]);
+
+    // Show loading while checking session
+    if (isInitializing) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        e.stopPropagation();
+
+        // Prevent empty submissions
+        if (!email || !password) {
+            return;
+        }
+
         const success = await login(email, password, 'Staff');
         if (success) {
             navigate('/staff/dashboard');

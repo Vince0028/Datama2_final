@@ -16,6 +16,7 @@ import GuestRooms from "./pages/GuestRooms";
 import Login from "./pages/Login";
 import GuestSignup from "./pages/GuestSignup";
 import StaffLogin from "./pages/StaffLogin";
+import Debug from "./pages/Debug";
 
 // Staff Pages
 import StaffDashboard from "./pages/StaffDashboard";
@@ -47,6 +48,7 @@ const AppRoutes = () => {
 
       {/* Staff Auth Route */}
       <Route path="/staff-login" element={<StaffLogin />} />
+      <Route path="/test-debug" element={<Debug />} />
 
       {/* Guest Routes */}
       <Route path="/" element={
@@ -107,7 +109,7 @@ const App = () => (
       <AuthProvider>
         <ReservationProvider>
           <Toaster />
-          <Sonner />
+          <Sonner position="top-center" />
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>

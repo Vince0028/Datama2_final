@@ -1,13 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import type { Reservation, Guest, Room, RoomType } from '@/types/hotel';
-import { supabase } from '@/lib/supabase';
+import { supabase, rawQuery, rawMutate } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { toast } from "sonner";
 
 interface ReservationContextType {
     reservations: Reservation[];
     rooms: Room[];
-    isLoading: boolean;
     addReservation: (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest> }) => Promise<void>;
     updateStatus: (id: number, status: Reservation['Status']) => Promise<void>;
     metrics: {
@@ -24,126 +23,212 @@ interface ReservationContextType {
 
 const ReservationContext = createContext<ReservationContextType | undefined>(undefined);
 
-export function ReservationProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
-    const [reservations, setReservations] = useState<Reservation[]>([]);
-    const [rooms, setRooms] = useState<Room[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+// ── Mapping helpers (pure functions, no state) ──────────────────────────
+function mapRoom(r: any, roomTypesData: any[]): Room {
+    const rTypeId = r.roomtype_id || r.RoomType_ID;
+    const matchType = roomTypesData?.find((rt: any) =>
+        (rt.roomtype_id || rt.RoomType_ID) === rTypeId
+    );
+    return {
+        Room_ID: r.room_id || r.Room_ID,
+        Room_Number: r.room_number || r.Room_Number,
+        RoomType_ID: rTypeId,
+        Status: r.status || r.Status,
+        roomType: matchType ? {
+            RoomType_ID: matchType.roomtype_id || matchType.RoomType_ID,
+            Type_Name: matchType.type_name || matchType.Type_Name,
+            Base_Rate: matchType.base_rate || matchType.Base_Rate
+        } : undefined
+    };
+}
 
-    // Fetch Initial Data
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            // Fetch Rooms with Type
-            const { data: roomsData, error: roomsError } = await supabase
-                .from('room')
-                .select(`
-                    *,
-                    roomtype (*)
-                `)
-                .order('room_id');
+function mapReservation(r: any): Reservation {
+    return {
+        Reservation_ID: r.reservation_id,
+        Room_ID: r.room_id,
+        Staff_ID: r.staff_id || 0,
+        Check_In: r.check_in,
+        Check_Out: r.check_out,
+        Status: r.status,
+        Total_Amount: r.total_amount,
+        room: r.room ? {
+            Room_ID: r.room.room_id,
+            Room_Number: r.room.room_number,
+            RoomType_ID: r.room.roomtype_id,
+            Status: r.room.status,
+            roomType: r.room.roomtype ? {
+                RoomType_ID: r.room.roomtype.roomtype_id,
+                Type_Name: r.room.roomtype.type_name,
+                Base_Rate: r.room.roomtype.base_rate
+            } : undefined
+        } : undefined,
+        guests: (r.guests || []).map((rg: any) => ({
+            ResGuest_ID: rg.resguest_id,
+            Reservation_ID: rg.reservation_id,
+            Guest_ID: rg.guest_id,
+            Guest_Type: rg.guest_type,
+            guest: rg.guest ? {
+                Guest_ID: rg.guest.guest_id,
+                First_Name: rg.guest.first_name,
+                Last_Name: rg.guest.last_name,
+                Email: rg.guest.email,
+                Phone: rg.guest.phone,
+                Address: rg.guest.address,
+                City: rg.guest.city,
+                Postal_Code: rg.guest.postal_code,
+                Middle_Name: rg.guest.middle_name
+            } : undefined
+        }))
+    };
+}
 
-            if (roomsError) throw roomsError;
+// ── Standalone fetch functions using raw REST (supabase-js hangs) ────────
+async function fetchRoomsFromDB(): Promise<{ rooms: Room[]; roomTypes: any[] }> {
+    const [typesRes, roomsRes] = await Promise.all([
+        rawQuery('roomtype'),
+        rawQuery('room', { order: 'room_id.asc' }),
+    ]);
+    if (typesRes.error) throw new Error('Room types: ' + typesRes.error.message);
+    if (roomsRes.error) throw new Error('Rooms: ' + roomsRes.error.message);
 
-            // Map DB snake_case to Types PascalCase
-            const mappedRooms: Room[] = (roomsData || []).map((r: any) => ({
-                Room_ID: r.room_id,
-                Room_Number: r.room_number,
-                RoomType_ID: r.roomtype_id,
-                Status: r.status,
-                roomType: r.roomtype ? {
-                    RoomType_ID: r.roomtype.roomtype_id,
-                    Type_Name: r.roomtype.type_name,
-                    Base_Rate: r.roomtype.base_rate
-                } : undefined
-            }));
-            setRooms(mappedRooms);
+    const types = typesRes.data || [];
+    const mapped = (roomsRes.data || []).map((r: any) => mapRoom(r, types));
+    return { rooms: mapped, roomTypes: types };
+}
 
-            // Fetch Reservations with nested guests and rooms
-            const { data: resData, error: resError } = await supabase
-                .from('reservation')
-                .select(`
-                    *,
-                    room:room (*, roomtype(*)),
-                    guests:reservationguest (
-                        *,
-                        guest (*)
-                    )
-                `)
-                .order('created_at', { ascending: false });
+async function fetchReservationsFromDB(): Promise<Reservation[]> {
+    // Raw REST doesn't support nested selects like supabase-js,
+    // so we fetch each table and join in JS.
+    const [resRes, roomsRes, typesRes, rgRes, guestsRes] = await Promise.all([
+        rawQuery('reservation', { order: 'created_at.desc' }),
+        rawQuery('room'),
+        rawQuery('roomtype'),
+        rawQuery('reservationguest'),
+        rawQuery('guest'),
+    ]);
 
-            if (resError) throw resError;
+    const roomsArr = roomsRes.data || [];
+    const typesArr = typesRes.data || [];
+    const rgArr = rgRes.data || [];
+    const guestsArr = guestsRes.data || [];
 
-            const mappedReservations: Reservation[] = (resData || []).map((r: any) => ({
-                Reservation_ID: r.reservation_id,
-                Room_ID: r.room_id,
-                Staff_ID: r.staff_id || 0,
-                Check_In: r.check_in,
-                Check_Out: r.check_out,
-                Status: r.status,
-                Total_Amount: r.total_amount,
-                room: r.room ? {
-                    Room_ID: r.room.room_id,
-                    Room_Number: r.room.room_number,
-                    RoomType_ID: r.room.roomtype_id,
-                    Status: r.room.status,
-                    roomType: r.room.roomtype ? {
-                        RoomType_ID: r.room.roomtype.roomtype_id,
-                        Type_Name: r.room.roomtype.type_name,
-                        Base_Rate: r.room.roomtype.base_rate
-                    } : undefined
-                } : undefined,
-                guests: (r.guests || []).map((rg: any) => ({
+    return (resRes.data || []).map((r: any) => {
+        const room = roomsArr.find((rm: any) => rm.room_id === r.room_id);
+        const roomType = room ? typesArr.find((rt: any) => rt.roomtype_id === room.roomtype_id) : null;
+        const resGuests = rgArr
+            .filter((rg: any) => rg.reservation_id === r.reservation_id)
+            .map((rg: any) => {
+                const guest = guestsArr.find((g: any) => g.guest_id === rg.guest_id);
+                return {
                     ResGuest_ID: rg.resguest_id,
                     Reservation_ID: rg.reservation_id,
                     Guest_ID: rg.guest_id,
                     Guest_Type: rg.guest_type,
-                    guest: rg.guest ? {
-                        Guest_ID: rg.guest.guest_id,
-                        First_Name: rg.guest.first_name,
-                        Last_Name: rg.guest.last_name,
-                        Email: rg.guest.email,
-                        Phone: rg.guest.phone,
-                        Address: rg.guest.address,
-                        City: rg.guest.city,
-                        Postal_Code: rg.guest.postal_code,
-                        Middle_Name: rg.guest.middle_name
+                    guest: guest ? {
+                        Guest_ID: guest.guest_id,
+                        First_Name: guest.first_name,
+                        Last_Name: guest.last_name,
+                        Email: guest.email,
+                        Phone: guest.phone,
+                        Address: guest.address,
+                        City: guest.city,
+                        Postal_Code: guest.postal_code,
+                        Middle_Name: guest.middle_name
                     } : undefined
-                }))
-            }));
-            setReservations(mappedReservations);
+                };
+            });
 
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            toast.error("Failed to load hotel data");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        return {
+            Reservation_ID: r.reservation_id,
+            Room_ID: r.room_id,
+            Staff_ID: r.staff_id || 0,
+            Check_In: r.check_in,
+            Check_Out: r.check_out,
+            Status: r.status,
+            Total_Amount: r.total_amount,
+            room: room ? {
+                Room_ID: room.room_id,
+                Room_Number: room.room_number,
+                RoomType_ID: room.roomtype_id,
+                Status: room.status,
+                roomType: roomType ? {
+                    RoomType_ID: roomType.roomtype_id,
+                    Type_Name: roomType.type_name,
+                    Base_Rate: roomType.base_rate
+                } : undefined
+            } : undefined,
+            guests: resGuests
+        };
+    });
+}
+
+export function ReservationProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth();
+    const [reservations, setReservations] = useState<Reservation[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
+    const roomTypesRef = useRef<any[]>([]);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
-        fetchData();
+        mountedRef.current = true;
 
-        // Subscribe to changes
-        const roomSubscription = supabase
-            .channel('room-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'room' }, fetchData)
-            .subscribe();
+        // Fetch all data
+        fetchRoomsFromDB()
+            .then(({ rooms: fetchedRooms, roomTypes }) => {
+                if (!mountedRef.current) return;
+                roomTypesRef.current = roomTypes;
+                setRooms(fetchedRooms);
+            })
+            .catch(err => {
+                console.error('[ReservationContext] Room fetch failed:', err);
+                toast.error('Failed to load rooms: ' + err.message);
+            });
 
-        const resSubscription = supabase
-            .channel('reservation-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservation' }, fetchData)
-            .subscribe();
+        fetchReservationsFromDB()
+            .then(fetched => {
+                if (!mountedRef.current) return;
+                setReservations(fetched);
+            })
+            .catch(err => {
+                console.error('[ReservationContext] Reservation fetch failed:', err);
+            });
+
+        // Realtime updates
+        const roomCh = supabase.channel('rooms-realtime').on('postgres_changes',
+            { event: '*', schema: 'public', table: 'room' },
+            (p) => {
+                if (p.eventType === 'UPDATE') {
+                    setRooms(prev => prev.map(r =>
+                        r.Room_ID === (p.new.room_id || p.new.Room_ID)
+                            ? { ...r, Status: p.new.status || p.new.Status }
+                            : r
+                    ));
+                }
+            }
+        ).subscribe();
+
+        const resCh = supabase.channel('reservations-realtime').on('postgres_changes',
+            { event: '*', schema: 'public', table: 'reservation' },
+            (p) => {
+                if (p.eventType === 'UPDATE') {
+                    setReservations(prev => prev.map(res =>
+                        res.Reservation_ID === p.new.reservation_id
+                            ? { ...res, Status: p.new.status, Staff_ID: p.new.staff_id || res.Staff_ID }
+                            : res
+                    ));
+                }
+            }
+        ).subscribe();
 
         return () => {
-            roomSubscription.unsubscribe();
-            resSubscription.unsubscribe();
+            mountedRef.current = false;
+            supabase.removeChannel(roomCh);
+            supabase.removeChannel(resCh);
         };
     }, []);
 
     const addReservation = async (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest> }) => {
         try {
-            // 1. Calculate Amount
             const room = rooms.find(r => r.Room_ID === data.Room_ID);
             const baseRate = room?.roomType?.Base_Rate || 0;
             const checkIn = new Date(data.Check_In);
@@ -152,51 +237,38 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             const totalAmount = baseRate * nights;
 
             let guestId = user?.Guest_ID;
-
-            // If no logged in guest ID, or booking for someone else (staff mode?)
-            // For now assuming Guest Mode: must have Guest_ID
             if (!guestId) {
-                // If we have guest details but no ID, query or insert guest?
-                // In this app flow, we require login, so user.Guest_ID should exist.
-                // But let's handle the case just in case.
-                console.warn("No Guest_ID found in auth context for booking");
                 throw new Error("User must be logged in to book");
             }
 
-            // 2. Insert Reservation
-            const { data: newRes, error: resError } = await supabase
-                .from('reservation')
-                .insert([{
+            // Insert reservation
+            const { data: newRes, error: resError } = await rawMutate('reservation', 'POST', {
+                body: {
                     room_id: data.Room_ID,
                     staff_id: null,
                     check_in: data.Check_In,
                     check_out: data.Check_Out,
                     status: 'Pending',
                     total_amount: totalAmount
-                }])
-                .select()
-                .single();
+                },
+                returnData: true,
+                single: true,
+            });
+            if (resError) throw new Error(resError.message);
 
-            if (resError) throw resError;
-
-            // 3. Insert ReservationGuest
-            const { error: resGuestError } = await supabase
-                .from('reservationguest')
-                .insert([{
+            // Insert reservation-guest link
+            const { error: rgError } = await rawMutate('reservationguest', 'POST', {
+                body: {
                     reservation_id: newRes.reservation_id,
                     guest_id: guestId,
                     guest_type: 'Primary'
-                }]);
-
-            if (resGuestError) throw resGuestError;
+                },
+            });
+            if (rgError) throw new Error(rgError.message);
 
             toast.success("Reservation Request Sent!", {
                 description: "Staff will review your booking shortly."
             });
-
-            // Realtime subscription will fetch data, but we can verify
-            // await fetchData();
-
         } catch (error: any) {
             console.error("Error adding reservation:", error);
             toast.error(error.message || "Failed to book room");
@@ -204,30 +276,31 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
     };
 
     const updateStatus = async (id: number, status: Reservation['Status']) => {
+        // Optimistic update
+        setReservations(prev =>
+            prev.map(res =>
+                res.Reservation_ID === id
+                    ? { ...res, Status: status, Staff_ID: status === 'Booked' ? (user?.Staff_ID || res.Staff_ID) : res.Staff_ID }
+                    : res
+            )
+        );
+
         try {
-            const updates: any = { status: status };
-            if (status === 'Booked') {
-                updates.staff_id = user?.Staff_ID || null; // Track which staff approved it
-            }
+            const updates: any = { status };
+            if (status === 'Booked') updates.staff_id = user?.Staff_ID || null;
 
-            const { error } = await supabase
-                .from('reservation')
-                .update(updates)
-                .eq('reservation_id', id);
+            const { error } = await rawMutate('reservation', 'PATCH', {
+                body: updates,
+                filters: `reservation_id=eq.${id}`,
+            });
+            if (error) throw new Error(error.message);
 
-            if (error) throw error;
-
-            // Logic for room status update is handled by DB triggers usually, or manually here
-            // We'll do it manually to be safe for now
             const targetRes = reservations.find(r => r.Reservation_ID === id);
             if (targetRes) {
                 let newRoomStatus: Room['Status'] | null = null;
                 if (status === 'CheckedIn') newRoomStatus = 'Occupied';
                 else if (status === 'CheckedOut') newRoomStatus = 'Available';
-
-                if (newRoomStatus) {
-                    await updateRoomStatus(targetRes.Room_ID, newRoomStatus);
-                }
+                if (newRoomStatus) await updateRoomStatus(targetRes.Room_ID, newRoomStatus);
             }
 
             toast.success(`Reservation ${status}`);
@@ -238,17 +311,33 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
     };
 
     const updateRoomStatus = async (id: number, status: Room['Status']) => {
-        try {
-            const { error } = await supabase
-                .from('room')
-                .update({ status: status })
-                .eq('room_id', id);
+        // Optimistic update
+        setRooms(prev =>
+            prev.map(room =>
+                room.Room_ID === id ? { ...room, Status: status } : room
+            )
+        );
 
-            if (error) throw error;
+        try {
+            const { error } = await rawMutate('room', 'PATCH', {
+                body: { status },
+                filters: `room_id=eq.${id}`,
+            });
+            if (error) throw new Error(error.message);
             toast.success(`Room status updated to ${status}`);
         } catch (error: any) {
             toast.error("Failed to update room status");
         }
+    };
+
+    // Full refresh (used by refreshData)
+    const refreshData = async () => {
+        const { rooms: fetchedRooms, roomTypes } = await fetchRoomsFromDB();
+        roomTypesRef.current = roomTypes;
+        setRooms(fetchedRooms);
+
+        const fetched = await fetchReservationsFromDB();
+        setReservations(fetched);
     };
 
     const checkAvailability = (roomId: number, checkIn: string, checkOut: string) => {
@@ -293,7 +382,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <ReservationContext.Provider value={{ reservations, rooms, isLoading, addReservation, updateStatus, metrics, resetData, updateRoomStatus, checkAvailability, refreshData: fetchData }}>
+        <ReservationContext.Provider value={{ reservations, rooms, addReservation, updateStatus, metrics, resetData, updateRoomStatus, checkAvailability, refreshData }}>
             {children}
         </ReservationContext.Provider>
     );
