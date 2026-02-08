@@ -7,6 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
+// Role-based default landing pages
+const roleDefaultPage: Record<string, string> = {
+  Manager:      '/staff/dashboard',
+  Housekeeping: '/staff/rooms',
+  Accountant:   '/staff/dashboard',
+};
+
 export default function StaffLogin() {
     const navigate = useNavigate();
     const { login, isLoading, isInitializing, isAuthenticated, user } = useAuth();
@@ -15,10 +22,11 @@ export default function StaffLogin() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
-    // Redirect if already logged in as staff
+    // Redirect if already logged in as staff — go to role-specific page
     useEffect(() => {
         if (!isInitializing && isAuthenticated && user?.User_Type === 'Staff') {
-            navigate('/staff/dashboard', { replace: true });
+            const dest = roleDefaultPage[user.staffData?.Role || 'Manager'] || '/staff/dashboard';
+            navigate(dest, { replace: true });
         }
     }, [isInitializing, isAuthenticated, user, navigate]);
 
@@ -33,6 +41,9 @@ export default function StaffLogin() {
 
         const success = await login(email, password, 'Staff');
         if (success) {
+            // user state may not be set yet, so derive role from the login response
+            // The auth state change will redirect via the useEffect above
+            // But we also do an immediate navigate as a fallback
             navigate('/staff/dashboard');
         }
     };

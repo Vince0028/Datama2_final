@@ -28,12 +28,36 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Protected Route Component for Staff
+// Map each staff role to the pages they can access
+const roleAccess: Record<string, string[]> = {
+  Manager:      ['/staff/dashboard', '/staff/rooms', '/staff/reservations', '/staff/guests', '/staff/reports'],
+  Housekeeping: ['/staff/rooms'],
+  Accountant:   ['/staff/dashboard'],
+};
+
+// Default landing page per role
+const roleDefaultPage: Record<string, string> = {
+  Manager:      '/staff/dashboard',
+  Housekeeping: '/staff/rooms',
+  Accountant:   '/staff/dashboard',
+};
+
+// Protected Route Component for Staff — enforces role-based access
 function StaffRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated || user?.User_Type !== 'Staff') {
     return <Navigate to="/staff-login" replace />;
+  }
+
+  // Check if the current path is allowed for this role
+  const role = user.staffData?.Role || 'Manager';
+  const allowed = roleAccess[role] || roleAccess.Manager;
+  const currentPath = window.location.pathname;
+
+  if (!allowed.includes(currentPath)) {
+    // Redirect to their default page instead
+    return <Navigate to={roleDefaultPage[role] || '/staff/dashboard'} replace />;
   }
 
   return <StaffLayout>{children}</StaffLayout>;

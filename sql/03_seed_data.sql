@@ -42,15 +42,23 @@ INSERT INTO Room (Room_Number, RoomType_ID, Status, Floor) VALUES
 --       (Authentication → Users → Add User) for login to work.
 --
 --   Demo credentials:
---     admin@hotel.com      / admin123
---     frontdesk@hotel.com  / staff123
+--     housekeeping@hotel.com  / staff123
+--     accountant@hotel.com    / staff123
+--     manager@hotel.com       / staff123
+--
+--   Role-based access:
+--     Housekeeping → Rooms only
+--     Accountant   → Dashboard only
+--     Manager      → Full access (all pages)
 
 INSERT INTO Staff (First_Name, Last_Name, Email, Role, Shift) VALUES
-    ('John',  'Smith',   'frontdesk@hotel.com', 'FrontDesk', 'Day'),
-    ('Sarah', 'Johnson', 'admin@hotel.com',     'Manager',   'Day'),
-    ('Mike',  'Davis',   'concierge@hotel.com', 'Concierge', 'Day');
+    ('Diego', 'Cruz',   'housekeeping@hotel.com', 'Housekeeping', 'Day'),
+    ('Ivy',   'Lopez',  'accountant@hotel.com',   'Accountant',   'Day'),
+    ('Leah',  'Garcia', 'manager@hotel.com',      'Manager',      'Day');
 
-
+house123
+manager123
+accountant123
 -- ─────────────────────────────────────────────────────────────────────────
 -- DONE
 -- ─────────────────────────────────────────────────────────────────────────

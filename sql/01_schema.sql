@@ -114,7 +114,7 @@ CREATE TABLE Room (
 -- TABLE 4: Staff
 -- ============================================================================
 -- Hotel employees who process reservations.
--- Role values: Manager, FrontDesk, Housekeeping, Concierge, Accountant
+-- Role values: Manager, Housekeeping, Accountant
 -- Shift values: Day, Night, Rotating
 
 CREATE TABLE Staff (

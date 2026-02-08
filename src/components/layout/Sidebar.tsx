@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 
-const navigation = [
+const allNavigation = [
   { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
   { name: 'Rooms', href: '/staff/rooms', icon: Bed },
   { name: 'Reservations', href: '/staff/reservations', icon: Calendar },
@@ -24,15 +24,29 @@ const navigation = [
   { name: 'Staff & Reports', href: '/staff/reports', icon: UserCog },
 ];
 
+// Role-based navigation filtering
+function getNavigationForRole(role?: string) {
+  switch (role) {
+    case 'Housekeeping':
+      return allNavigation.filter(n => n.name === 'Rooms');
+    case 'Accountant':
+      return allNavigation.filter(n => n.name === 'Dashboard');
+    case 'Manager':
+    default:
+      return allNavigation;
+  }
+}
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const navigation = getNavigationForRole(user?.staffData?.Role);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/staff-login');
   };
 
   return (
