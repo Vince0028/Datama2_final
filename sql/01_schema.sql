@@ -114,7 +114,7 @@ CREATE TABLE Room (
 -- TABLE 4: Staff
 -- ============================================================================
 -- Hotel employees who process reservations.
--- Role values: Manager, Housekeeping, Accountant, FrontDesk, Concierge
+-- Role values: Manager, Housekeeping, Accountant, FrontDesk, Concierge, ReservationAgent
 -- Shift values: Day, Night, Rotating
 
 CREATE TABLE Staff (
@@ -125,7 +125,8 @@ CREATE TABLE Staff (
     Role       VARCHAR(50)  NOT NULL,
     Shift      VARCHAR(50)  DEFAULT 'Day',
     Hire_Date  DATE DEFAULT CURRENT_DATE,
-    Status     VARCHAR(20)  DEFAULT 'Active'
+    Status     VARCHAR(20)  DEFAULT 'Active',
+    CHECK (Role IN ('Manager', 'Housekeeping', 'Accountant', 'FrontDesk', 'Concierge', 'ReservationAgent'))
 );
 
 

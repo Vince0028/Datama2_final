@@ -48,7 +48,7 @@ export default function GuestSignup() {
         });
 
         if (success) {
-            navigate('/');
+            navigate('/login');
         }
     };
 

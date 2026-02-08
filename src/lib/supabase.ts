@@ -65,10 +65,11 @@ export async function rawMutate<T = any>(
         filters?: string;       // for PATCH/DELETE: "reservation_id=eq.5"
         returnData?: boolean;    // if true, returns inserted/updated rows
         single?: boolean;
+        token?: string;          // pass token directly to avoid getSession()
     } = {}
 ): Promise<{ data: T | null; error: any }> {
     try {
-        const token = _cachedToken || supabaseAnonKey;
+        const token = options.token || _cachedToken || supabaseAnonKey;
 
         let url = `${supabaseUrl}/rest/v1/${table}`;
         if (options.filters) url += `?${options.filters}`;

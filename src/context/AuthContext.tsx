@@ -65,7 +65,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            console.warn('User authenticated but no Guest/Staff record found.');
+            // No guest/staff record found — create guest record on the fly
+            // This handles cases where signup failed to save the profile
+            console.warn('No Guest/Staff record found, creating guest record for:', email);
+            const { data: newGuest } = await rawMutate('guest', 'POST', {
+                body: {
+                    first_name: email.split('@')[0],
+                    last_name: '',
+                    email: email,
+                    phone: '',
+                    middle_name: '',
+                    address: '',
+                    city: '',
+                    postal_code: '',
+                },
+                returnData: true,
+                single: true,
+                token,
+            });
+
+            if (newGuest) {
+                setUser({
+                    User_ID: newGuest.guest_id,
+                    Email: email,
+                    User_Type: 'Guest',
+                    Guest_ID: newGuest.guest_id,
+                    Staff_ID: null,
+                    guestData: {
+                        First_Name: newGuest.first_name,
+                        Last_Name: newGuest.last_name,
+                        Email: email,
+                        Phone: ''
+                    },
+                });
+                return;
+            }
+
             setUser(null);
         } catch (error) {
             console.error('Error fetching user details:', error);
@@ -160,8 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         toast.success("Logged in successfully!");
 
-        // Force update context immediately (onAuthStateChange may already be doing this)
-        await fetchUserDetails(email);
+        // Force update context immediately — pass the fresh token so RLS policies work
+        const token = authData.session?.access_token;
+        setCachedToken(token || null);
+        await fetchUserDetails(email, token);
 
         setIsLoading(false);
         return true;
@@ -171,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
 
         // 1. Sign up with Supabase Auth
-        const { error: authError } = await supabase.auth.signUp({
+        const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
             password,
         });
@@ -182,7 +219,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return false;
         }
 
-        // 2. Create Guest Record
+        // Cache the token immediately so rawMutate can pass RLS
+        const token = authData.session?.access_token;
+        if (token) setCachedToken(token);
+
+        // 2. Create Guest Record — pass token explicitly for RLS
         const { data: newGuest, error: guestError } = await rawMutate('guest', 'POST', {
             body: {
                 first_name: guestData.First_Name,
@@ -196,13 +237,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             },
             returnData: true,
             single: true,
+            token,
         });
 
         if (guestError) {
             console.error("Error creating guest record:", guestError);
-            toast.error("Account created, but failed to save profile.");
-            setIsLoading(false);
-            return false;
         }
 
         // 3. Create UserAccount Record (Optional but per schema)
@@ -214,11 +253,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     user_type: 'Guest',
                     guest_id: newGuest.guest_id
                 },
+                token,
             });
             if (accError) console.error("Error linking UserAccount:", accError);
         }
 
-        toast.success("Account created! Please sign in.");
+        toast.success("Account created! Please check your email to verify your account.");
         setIsLoading(false);
         return true;
     };

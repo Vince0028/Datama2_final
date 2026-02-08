@@ -36,25 +36,28 @@ INSERT INTO Room (Room_Number, RoomType_ID, Status, Floor) VALUES
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Staff (3 demo employees)
+-- Staff (4 demo employees)
 -- ─────────────────────────────────────────────────────────────────────────
 -- NOTE: Each staff email must ALSO be registered in Supabase Auth
 --       (Authentication → Users → Add User) for login to work.
 --
 --   Demo credentials:
---     housekeeping@hotel.com  / house123
---     accountant@hotel.com    / accountant123
---     manager@hotel.com       / manager123
+--     housekeeping@hotel.com   / house123
+--     accountant@hotel.com     / accountant123
+--     manager@hotel.com        / manager123
+--     reservation@hotel.com    / reservation123
 --
 --   Role-based access:
---     Housekeeping → Rooms only
---     Accountant   → Dashboard only
---     Manager      → Full access (all pages)
+--     Housekeeping      → Rooms only
+--     Accountant        → Dashboard only
+--     Manager           → Full access (all pages)
+--     ReservationAgent  → Dashboard, Reservations
 
 INSERT INTO Staff (First_Name, Last_Name, Email, Role, Shift) VALUES
-    ('Diego', 'Cruz',   'housekeeping@hotel.com', 'Housekeeping', 'Day'),
-    ('Ivy',   'Lopez',  'accountant@hotel.com',   'Accountant',   'Day'),
-    ('Leah',  'Garcia', 'manager@hotel.com',      'Manager',      'Day');
+    ('Diego', 'Cruz',   'housekeeping@hotel.com',  'Housekeeping',     'Day'),
+    ('Ivy',   'Lopez',  'accountant@hotel.com',    'Accountant',       'Day'),
+    ('Leah',  'Garcia', 'manager@hotel.com',       'Manager',          'Day'),
+    ('Mark',  'Santos', 'reservation@hotel.com',   'ReservationAgent', 'Day');
 
 
 -- ─────────────────────────────────────────────────────────────────────────

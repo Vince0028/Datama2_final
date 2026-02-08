@@ -35,6 +35,8 @@ function getNavigationForRole(role?: string) {
       return allNavigation.filter(n => ['Dashboard', 'Reservations', 'Guests'].includes(n.name));
     case 'Concierge':
       return allNavigation.filter(n => ['Dashboard', 'Guests'].includes(n.name));
+    case 'ReservationAgent':
+      return allNavigation.filter(n => ['Dashboard', 'Reservations'].includes(n.name));
     case 'Manager':
     default:
       return allNavigation;

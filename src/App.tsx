@@ -30,20 +30,22 @@ const queryClient = new QueryClient();
 
 // Map each staff role to the pages they can access
 const roleAccess: Record<string, string[]> = {
-  Manager:      ['/staff/dashboard', '/staff/rooms', '/staff/reservations', '/staff/guests', '/staff/reports'],
-  Housekeeping: ['/staff/rooms'],
-  Accountant:   ['/staff/dashboard'],
-  FrontDesk:    ['/staff/dashboard', '/staff/reservations', '/staff/guests'],
-  Concierge:    ['/staff/dashboard', '/staff/guests'],
+  Manager:          ['/staff/dashboard', '/staff/rooms', '/staff/reservations', '/staff/guests', '/staff/reports'],
+  Housekeeping:     ['/staff/rooms'],
+  Accountant:       ['/staff/dashboard'],
+  FrontDesk:        ['/staff/dashboard', '/staff/reservations', '/staff/guests'],
+  Concierge:        ['/staff/dashboard', '/staff/guests'],
+  ReservationAgent: ['/staff/dashboard', '/staff/reservations'],
 };
 
 // Default landing page per role
 const roleDefaultPage: Record<string, string> = {
-  Manager:      '/staff/dashboard',
-  Housekeeping: '/staff/rooms',
-  Accountant:   '/staff/dashboard',
-  FrontDesk:    '/staff/dashboard',
-  Concierge:    '/staff/dashboard',
+  Manager:          '/staff/dashboard',
+  Housekeeping:     '/staff/rooms',
+  Accountant:       '/staff/dashboard',
+  FrontDesk:        '/staff/dashboard',
+  Concierge:        '/staff/dashboard',
+  ReservationAgent: '/staff/dashboard',
 };
 
 // Protected Route Component for Staff — enforces role-based access
@@ -137,7 +139,7 @@ const App = () => (
       <AuthProvider>
         <ReservationProvider>
           <Toaster />
-          <Sonner position="top-center" />
+          <Sonner position="top-center" expand={true} duration={5000} />
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>

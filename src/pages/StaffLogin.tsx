@@ -9,11 +9,12 @@ import { Briefcase, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 // Role-based default landing pages
 const roleDefaultPage: Record<string, string> = {
-  Manager:      '/staff/dashboard',
-  Housekeeping: '/staff/rooms',
-  Accountant:   '/staff/dashboard',
-  FrontDesk:    '/staff/dashboard',
-  Concierge:    '/staff/dashboard',
+  Manager:          '/staff/dashboard',
+  Housekeeping:     '/staff/rooms',
+  Accountant:       '/staff/dashboard',
+  FrontDesk:        '/staff/dashboard',
+  Concierge:        '/staff/dashboard',
+  ReservationAgent: '/staff/dashboard',
 };
 
 export default function StaffLogin() {
