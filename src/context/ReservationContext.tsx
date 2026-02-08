@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import type { Reservation, Guest, Room, RoomType } from '@/types/hotel';
-import { supabase, rawQuery, rawMutate } from '@/lib/supabase';
+import { supabase, rawQuery, rawMutate, getCachedToken } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { toast } from "sonner";
 
@@ -84,9 +84,13 @@ function mapReservation(r: any): Reservation {
 
 // ── Standalone fetch functions using raw REST (supabase-js hangs) ────────
 async function fetchRoomsFromDB(): Promise<{ rooms: Room[]; roomTypes: any[] }> {
+    // Get fresh token
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
     const [typesRes, roomsRes] = await Promise.all([
-        rawQuery('roomtype'),
-        rawQuery('room', { order: 'room_id.asc' }),
+        rawQuery('roomtype', { token }),
+        rawQuery('room', { order: 'room_id.asc', token }),
     ]);
     if (typesRes.error) throw new Error('Room types: ' + typesRes.error.message);
     if (roomsRes.error) throw new Error('Rooms: ' + roomsRes.error.message);
@@ -97,20 +101,26 @@ async function fetchRoomsFromDB(): Promise<{ rooms: Room[]; roomTypes: any[] }> 
 }
 
 async function fetchReservationsFromDB(): Promise<Reservation[]> {
+    // Get fresh token
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
     // Raw REST doesn't support nested selects like supabase-js,
     // so we fetch each table and join in JS.
-    const [resRes, roomsRes, typesRes, rgRes, guestsRes] = await Promise.all([
-        rawQuery('reservation', { order: 'created_at.desc' }),
-        rawQuery('room'),
-        rawQuery('roomtype'),
-        rawQuery('reservationguest'),
-        rawQuery('guest'),
+    const [resRes, roomsRes, typesRes, rgRes, guestsRes, staffRes] = await Promise.all([
+        rawQuery('reservation', { order: 'created_at.desc', token }),
+        rawQuery('room', { token }),
+        rawQuery('roomtype', { token }),
+        rawQuery('reservationguest', { token }),
+        rawQuery('guest', { token }),
+        rawQuery('staff', { token }),
     ]);
 
     const roomsArr = roomsRes.data || [];
     const typesArr = typesRes.data || [];
     const rgArr = rgRes.data || [];
     const guestsArr = guestsRes.data || [];
+    const staffArr = staffRes.data || [];
 
     return (resRes.data || []).map((r: any) => {
         const room = roomsArr.find((rm: any) => rm.room_id === r.room_id);
@@ -138,6 +148,9 @@ async function fetchReservationsFromDB(): Promise<Reservation[]> {
                 };
             });
 
+        // Find staff who processed this reservation
+        const staff = r.staff_id ? staffArr.find((s: any) => s.staff_id === r.staff_id) : null;
+
         return {
             Reservation_ID: r.reservation_id,
             Room_ID: r.room_id,
@@ -157,18 +170,25 @@ async function fetchReservationsFromDB(): Promise<Reservation[]> {
                     Base_Rate: roomType.base_rate
                 } : undefined
             } : undefined,
-            guests: resGuests
+            guests: resGuests,
+            staff: staff ? {
+                Staff_ID: staff.staff_id,
+                First_Name: staff.first_name,
+                Last_Name: staff.last_name,
+                Role: staff.role
+            } : undefined
         };
     });
 }
 
 export function ReservationProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, isAuthenticated } = useAuth();
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [rooms, setRooms] = useState<Room[]>([]);
     const roomTypesRef = useRef<any[]>([]);
     const mountedRef = useRef(true);
 
+    // Refetch data when user changes (login/logout)
     useEffect(() => {
         mountedRef.current = true;
 
@@ -225,7 +245,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             supabase.removeChannel(roomCh);
             supabase.removeChannel(resCh);
         };
-    }, []);
+    }, [isAuthenticated, user?.User_Type]);
 
     const addReservation = async (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest> }) => {
         try {
@@ -241,6 +261,17 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 throw new Error("User must be logged in to book");
             }
 
+            // Get fresh token from Supabase session
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            
+            console.log('[addReservation] Token exists:', !!token);
+            console.log('[addReservation] Guest ID:', guestId);
+            
+            if (!token) {
+                throw new Error("Authentication token missing. Please log in again.");
+            }
+
             // Insert reservation
             const { data: newRes, error: resError } = await rawMutate('reservation', 'POST', {
                 body: {
@@ -253,6 +284,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 },
                 returnData: true,
                 single: true,
+                token: token,
             });
             if (resError) throw new Error(resError.message);
 
@@ -263,6 +295,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                     guest_id: guestId,
                     guest_type: 'Primary'
                 },
+                token: token,
             });
             if (rgError) throw new Error(rgError.message);
 
@@ -276,26 +309,66 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
     };
 
     const updateStatus = async (id: number, status: Reservation['Status']) => {
+        const targetRes = reservations.find(r => r.Reservation_ID === id);
+        const previousStatus = targetRes?.Status;
+
         // Optimistic update
         setReservations(prev =>
             prev.map(res =>
                 res.Reservation_ID === id
-                    ? { ...res, Status: status, Staff_ID: status === 'Booked' ? (user?.Staff_ID || res.Staff_ID) : res.Staff_ID }
+                    ? { ...res, Status: status, Staff_ID: user?.Staff_ID || res.Staff_ID }
                     : res
             )
         );
 
         try {
-            const updates: any = { status };
-            if (status === 'Booked') updates.staff_id = user?.Staff_ID || null;
+            // Get fresh token
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
 
-            const { error } = await rawMutate('reservation', 'PATCH', {
+            if (!token) {
+                throw new Error("No auth token - please log in again");
+            }
+
+            // Always assign the staff who processed the action
+            const updates: any = { 
+                status,
+                staff_id: user?.Staff_ID || null
+            };
+
+            console.log('[updateStatus] Updating reservation:', id, updates, 'Staff_ID:', user?.Staff_ID);
+
+            const { data: patchData, error } = await rawMutate('reservation', 'PATCH', {
                 body: updates,
                 filters: `reservation_id=eq.${id}`,
+                token,
+                returnData: true,
             });
+            
+            console.log('[updateStatus] PATCH result:', patchData, error);
+            
             if (error) throw new Error(error.message);
 
-            const targetRes = reservations.find(r => r.Reservation_ID === id);
+            // Log the action in ReservationLog
+            if (user?.Staff_ID) {
+                const actionName = status === 'Booked' ? 'Approved' 
+                    : status === 'Cancelled' ? 'Rejected'
+                    : status === 'CheckedIn' ? 'Checked In'
+                    : status === 'CheckedOut' ? 'Checked Out'
+                    : status;
+
+                await rawMutate('reservationlog', 'POST', {
+                    body: {
+                        reservation_id: id,
+                        staff_id: user.Staff_ID,
+                        action: actionName,
+                        previous_status: previousStatus || 'Unknown',
+                        new_status: status,
+                    },
+                    token,
+                });
+            }
+
             if (targetRes) {
                 let newRoomStatus: Room['Status'] | null = null;
                 if (status === 'CheckedIn') newRoomStatus = 'Occupied';
@@ -303,10 +376,32 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 if (newRoomStatus) await updateRoomStatus(targetRes.Room_ID, newRoomStatus);
             }
 
-            toast.success(`Reservation ${status}`);
+            // Update local state with staff info
+            setReservations(prev =>
+                prev.map(res =>
+                    res.Reservation_ID === id
+                        ? { 
+                            ...res, 
+                            Status: status, 
+                            Staff_ID: user?.Staff_ID || res.Staff_ID,
+                            staff: user?.staffData ? {
+                                Staff_ID: user.Staff_ID!,
+                                First_Name: user.staffData.First_Name,
+                                Last_Name: user.staffData.Last_Name,
+                                Role: user.staffData.Role
+                            } : res.staff
+                        }
+                        : res
+                )
+            );
+
+            const staffName = user?.staffData?.First_Name || 'Staff';
+            toast.success(`Reservation ${status}`, {
+                description: `Processed by ${staffName}`
+            });
         } catch (error: any) {
             console.error("Error updating status:", error);
-            toast.error("Failed to update status");
+            toast.error("Failed to update status: " + error.message);
         }
     };
 

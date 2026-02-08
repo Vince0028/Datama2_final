@@ -15,6 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Avoids calling supabase.auth.getSession() which can hang.
 let _cachedToken: string | null = null;
 export function setCachedToken(token: string | null) { _cachedToken = token; }
+export function getCachedToken() { return _cachedToken; }
 
 // ── Raw REST helper — bypasses supabase-js for data fetching ────────────
 // supabase.from().select() hangs in this environment, but raw fetch works.

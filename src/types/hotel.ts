@@ -31,7 +31,7 @@ export interface Staff {
   Staff_ID: number;
   First_Name: string;
   Last_Name: string;
-  Role: 'Manager' | 'FrontDesk' | 'Housekeeping' | 'Concierge' | 'Accountant';
+  Role: 'Manager' | 'FrontDesk' | 'Housekeeping' | 'Concierge' | 'Accountant' | 'ReservationAgent';
 }
 
 export interface Reservation {

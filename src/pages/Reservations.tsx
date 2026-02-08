@@ -19,6 +19,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+// Format ID with leading zeros (e.g., 1 → 001)
+const formatId = (id: number, digits = 3) => String(id).padStart(digits, '0');
+
 export default function Reservations() {
   const { reservations, updateStatus } = useReservations();
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,7 +109,7 @@ export default function Reservations() {
               const primaryGuest = reservation.guests?.find(g => g.Guest_Type === 'Primary');
               return (
                 <TableRow key={reservation.Reservation_ID} className="animate-fade-in">
-                  <TableCell className="font-mono text-sm">#{reservation.Reservation_ID}</TableCell>
+                  <TableCell className="font-mono text-sm">#{formatId(reservation.Reservation_ID)}</TableCell>
                   <TableCell>
                     <div className="font-medium">
                       {primaryGuest?.guest
@@ -130,7 +133,7 @@ export default function Reservations() {
                   </TableCell>
                   <TableCell>
                     {reservation.staff ? (
-                      <span className="text-sm">{reservation.staff.First_Name}</span>
+                      <span className="text-sm">{reservation.staff.First_Name} {reservation.staff.Last_Name}</span>
                     ) : (
                       <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full flex items-center w-fit gap-1">
                         <Clock className="h-3 w-3" /> Unassigned

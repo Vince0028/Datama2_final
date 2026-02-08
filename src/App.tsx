@@ -11,6 +11,7 @@ import { StaffLayout } from "./components/layout/StaffLayout";
 // Guest Pages
 import GuestDashboard from "./pages/GuestDashboard";
 import GuestRooms from "./pages/GuestRooms";
+import GuestBookings from "./pages/GuestBookings";
 
 // Auth Pages
 import Login from "./pages/Login";
@@ -93,10 +94,7 @@ const AppRoutes = () => {
       } />
       <Route path="/guest/booking" element={
         <GuestLayout>
-          <div className="container py-8 text-center">
-            <h1 className="text-2xl font-bold">My Bookings</h1>
-            <p className="text-muted-foreground mt-2">Feature coming soon.</p>
-          </div>
+          <GuestBookings />
         </GuestLayout>
       } />
 

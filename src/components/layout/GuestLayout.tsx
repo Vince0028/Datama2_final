@@ -78,36 +78,29 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                         })}
 
                         <div className="flex items-center gap-2 ml-4">
-                            {isAuthenticated ? (
-                                user?.User_Type === 'Guest' ? (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="sm" className="gap-2">
-                                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
-                                                    <User className="h-3.5 w-3.5 text-primary" />
-                                                </div>
-                                                <span className="hidden sm:inline-block text-sm">
-                                                    {user.guestData?.First_Name || 'Guest'}
-                                                </span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-48">
-                                            <DropdownMenuLabel>
-                                                {user.guestData?.First_Name} {user.guestData?.Last_Name}
-                                            </DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                                                <LogOut className="h-4 w-4 mr-2" />
-                                                Logout
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                ) : (
-                                    <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
-                                        <LogOut className="h-4 w-4" />
-                                        <span className="hidden sm:inline-block">Logout</span>
-                                    </Button>
-                                )
+                            {isAuthenticated && user?.User_Type === 'Guest' ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="gap-2">
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
+                                                <User className="h-3.5 w-3.5 text-primary" />
+                                            </div>
+                                            <span className="hidden sm:inline-block text-sm">
+                                                {user.guestData?.First_Name || 'Guest'}
+                                            </span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuLabel>
+                                            {user.guestData?.First_Name} {user.guestData?.Last_Name}
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                                            <LogOut className="h-4 w-4 mr-2" />
+                                            Logout
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             ) : (
                                 <>
                                     <Link to="/login">

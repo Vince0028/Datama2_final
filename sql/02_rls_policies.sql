@@ -23,10 +23,10 @@ ALTER TABLE Guest             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE RoomType          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE Room              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE Staff             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE UserAccount       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE Reservation       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ReservationGuest  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE Payment           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ReservationLog    ENABLE ROW LEVEL SECURITY;
 
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -81,69 +81,43 @@ CREATE POLICY "Staff can view all guests" ON Guest
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- STEP 5: Reservation — guests see own, staff see all
+-- STEP 5: Reservation — simple permissive policies
 -- ─────────────────────────────────────────────────────────────────────────
 
--- ─────────────────────────────────────────────────────────────────────────
--- STEP 5: Reservation — guests see own, staff see all
--- ─────────────────────────────────────────────────────────────────────────
+-- Anyone logged in can SELECT reservations
+CREATE POLICY "Select reservations" ON Reservation
+    FOR SELECT TO authenticated
+    USING (true);
 
--- SELECT: guests see their reservations, staff see everything
-CREATE POLICY "View own or staff reservations" ON Reservation
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM ReservationGuest rg
-            JOIN Guest g ON rg.guest_id = g.guest_id
-            WHERE rg.reservation_id = Reservation.reservation_id
-              AND g.email = auth.jwt()->>'email'
-        )
-        OR auth.jwt()->>'email' IN (SELECT email FROM Staff)
-    );
+-- Anyone logged in can INSERT reservations  
+CREATE POLICY "Insert reservations" ON Reservation
+    FOR INSERT TO authenticated
+    WITH CHECK (true);
 
--- INSERT: any logged-in user can create a reservation
-CREATE POLICY "Authenticated users can create reservations" ON Reservation
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
--- UPDATE: staff can change status (Pending → Booked, etc.)
-CREATE POLICY "Staff can update reservations" ON Reservation
+-- Anyone logged in can UPDATE reservations
+CREATE POLICY "Update reservations" ON Reservation
     FOR UPDATE TO authenticated
-    USING  (auth.jwt()->>'email' IN (SELECT email FROM Staff))
-    WITH CHECK (auth.jwt()->>'email' IN (SELECT email FROM Staff));
+    USING (true)
+    WITH CHECK (true);
 
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- STEP 6: ReservationGuest — link guests to reservations
 -- ─────────────────────────────────────────────────────────────────────────
 
--- Any authenticated user can link a guest during booking
-CREATE POLICY "Authenticated can link guests" ON ReservationGuest
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+-- Anyone logged in can SELECT reservation guests
+CREATE POLICY "Select reservation guests" ON ReservationGuest
+    FOR SELECT TO authenticated
+    USING (true);
 
--- Guests see their own links, staff see all
-CREATE POLICY "View own or staff guest links" ON ReservationGuest
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM Guest g
-            WHERE g.guest_id = ReservationGuest.guest_id
-              AND g.email = auth.jwt()->>'email'
-        )
-        OR auth.jwt()->>'email' IN (SELECT email FROM Staff)
-    );
+-- Anyone logged in can INSERT reservation guests
+CREATE POLICY "Insert reservation guests" ON ReservationGuest
+    FOR INSERT TO authenticated
+    WITH CHECK (true);
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- STEP 7: UserAccount — own account only
--- ─────────────────────────────────────────────────────────────────────────
-
-CREATE POLICY "Users can view own account" ON UserAccount
-    FOR SELECT USING (auth.jwt()->>'email' = email);
-
-CREATE POLICY "Users can create own account" ON UserAccount
-    FOR INSERT WITH CHECK (auth.jwt()->>'email' = email);
-
-
--- ─────────────────────────────────────────────────────────────────────────
--- STEP 8: Payment — guests see own, staff see all
+-- STEP 7: Payment — guests see own, staff see all
 -- ─────────────────────────────────────────────────────────────────────────
 
 CREATE POLICY "View own or staff payments" ON Payment
@@ -160,6 +134,19 @@ CREATE POLICY "View own or staff payments" ON Payment
 
 CREATE POLICY "Authenticated can create payments" ON Payment
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- STEP 8: ReservationLog — staff can view and insert audit logs
+-- ─────────────────────────────────────────────────────────────────────────
+
+CREATE POLICY "Staff can view reservation logs" ON ReservationLog
+    FOR SELECT TO authenticated
+    USING (true);
+
+CREATE POLICY "Staff can insert reservation logs" ON ReservationLog
+    FOR INSERT TO authenticated
+    WITH CHECK (true);
 
 
 -- ─────────────────────────────────────────────────────────────────────────

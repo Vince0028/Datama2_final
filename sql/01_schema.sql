@@ -149,7 +149,8 @@ CREATE TABLE Reservation (
     Created_At     TIMESTAMPTZ DEFAULT NOW(),
     FOREIGN KEY (Room_ID)  REFERENCES Room(Room_ID),
     FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID),
-    CONSTRAINT valid_dates CHECK (Check_Out > Check_In)
+    CONSTRAINT valid_dates CHECK (Check_Out > Check_In),
+    CONSTRAINT reservation_status_check CHECK (Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled'))
 );
 
 
@@ -190,23 +191,22 @@ CREATE TABLE Payment (
 
 
 -- ============================================================================
--- TABLE 8: UserAccount
+-- TABLE 8: ReservationLog (Audit Trail)
 -- ============================================================================
--- Bridges authentication with Guest / Staff tables.
--- User_Type values: Guest, Staff
--- One UserAccount belongs to one Guest OR one Staff member.
+-- Tracks all status changes on reservations.
+-- Logs WHO changed the status, WHEN, and FROM what TO what.
 
-CREATE TABLE UserAccount (
-    User_ID       SERIAL PRIMARY KEY,
-    Email         VARCHAR(100) NOT NULL UNIQUE,
-    Password_Hash VARCHAR(255) NOT NULL,
-    User_Type     VARCHAR(20)  NOT NULL,
-    Guest_ID      INT,
-    Staff_ID      INT,
-    Created_At    TIMESTAMPTZ DEFAULT NOW(),
-    Last_Login    TIMESTAMPTZ,
-    FOREIGN KEY (Guest_ID) REFERENCES Guest(Guest_ID) ON DELETE SET NULL,
-    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID) ON DELETE SET NULL
+CREATE TABLE ReservationLog (
+    Log_ID         SERIAL PRIMARY KEY,
+    Reservation_ID INT          NOT NULL,
+    Staff_ID       INT          NOT NULL,
+    Action         VARCHAR(50)  NOT NULL,  -- e.g., 'Approved', 'Rejected', 'CheckedIn', 'CheckedOut'
+    Previous_Status VARCHAR(20),
+    New_Status     VARCHAR(20)  NOT NULL,
+    Notes          TEXT,
+    Created_At     TIMESTAMPTZ  DEFAULT NOW(),
+    FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID)
 );
 
 
@@ -218,4 +218,4 @@ CREATE INDEX idx_reservation_dates  ON Reservation(Check_In, Check_Out);
 CREATE INDEX idx_reservation_status ON Reservation(Status);
 CREATE INDEX idx_room_status        ON Room(Status);
 CREATE INDEX idx_guest_email        ON Guest(Email);
-CREATE INDEX idx_useraccount_email  ON UserAccount(Email);
+CREATE INDEX idx_reservation_log    ON ReservationLog(Reservation_ID);
