@@ -138,7 +138,7 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                             <span onClick={() => setContactOpen(true)} className="hover:text-white transition-colors cursor-pointer">Contact Us</span>
                         </div>
                         <p className="text-sm text-slate-400">
-                            © 2026 Nano Banan
+                            © 2026 Hotel Reservation
                         </p>
                     </div>
                 </div>
