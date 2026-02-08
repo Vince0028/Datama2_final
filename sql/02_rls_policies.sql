@@ -10,8 +10,6 @@
 --    • authenticated → logged-in user (guest or staff)
 --    • auth.jwt()->>'email' → the email of the currently logged-in user
 --    • auth.role()  → 'anon' or 'authenticated'
---
---  We use DROP POLICY IF EXISTS so this script is safe to re-run.
 -- ============================================================================
 
 
@@ -37,16 +35,13 @@ ALTER TABLE Payment           ENABLE ROW LEVEL SECURITY;
 -- Anyone (even not logged in) can browse room types and rooms.
 -- This powers the guest-facing "Our Rooms" page.
 
-DROP POLICY IF EXISTS "Public can view room types" ON RoomType;
 CREATE POLICY "Public can view room types" ON RoomType
     FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Public can view rooms" ON Room;
 CREATE POLICY "Public can view rooms" ON Room
     FOR SELECT USING (true);
 
 -- Staff can update room status (Available ↔ Occupied ↔ Maintenance)
-DROP POLICY IF EXISTS "Staff can update rooms" ON Room;
 CREATE POLICY "Staff can update rooms" ON Room
     FOR UPDATE TO authenticated
     USING  (auth.jwt()->>'email' IN (SELECT email FROM Staff))
@@ -54,14 +49,14 @@ CREATE POLICY "Staff can update rooms" ON Room
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- STEP 3: Staff — authenticated staff can read own record
+-- STEP 3: Staff — authenticated users can view staff records
 -- ─────────────────────────────────────────────────────────────────────────
 -- Used during login to verify the user is actually a staff member.
+-- Also allows staff to view the Staff Directory.
 
-DROP POLICY IF EXISTS "Staff can view own record" ON Staff;
-CREATE POLICY "Staff can view own record" ON Staff
+CREATE POLICY "Authenticated can view staff" ON Staff
     FOR SELECT TO authenticated
-    USING (auth.jwt()->>'email' = email);
+    USING (true);
 
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -69,22 +64,18 @@ CREATE POLICY "Staff can view own record" ON Staff
 -- ─────────────────────────────────────────────────────────────────────────
 
 -- Guests can see their own profile
-DROP POLICY IF EXISTS "Guests can view own data" ON Guest;
 CREATE POLICY "Guests can view own data" ON Guest
     FOR SELECT USING (auth.jwt()->>'email' = email);
 
 -- Guests can create their profile during signup
-DROP POLICY IF EXISTS "Guests can insert own data" ON Guest;
 CREATE POLICY "Guests can insert own data" ON Guest
     FOR INSERT WITH CHECK (auth.jwt()->>'email' = email);
 
 -- Guests can update their own profile
-DROP POLICY IF EXISTS "Guests can update own data" ON Guest;
 CREATE POLICY "Guests can update own data" ON Guest
     FOR UPDATE USING (auth.jwt()->>'email' = email);
 
 -- Staff can view all guests (for the Guests management page)
-DROP POLICY IF EXISTS "Staff can view all guests" ON Guest;
 CREATE POLICY "Staff can view all guests" ON Guest
     FOR SELECT USING (auth.jwt()->>'email' IN (SELECT email FROM Staff));
 
@@ -93,8 +84,11 @@ CREATE POLICY "Staff can view all guests" ON Guest
 -- STEP 5: Reservation — guests see own, staff see all
 -- ─────────────────────────────────────────────────────────────────────────
 
+-- ─────────────────────────────────────────────────────────────────────────
+-- STEP 5: Reservation — guests see own, staff see all
+-- ─────────────────────────────────────────────────────────────────────────
+
 -- SELECT: guests see their reservations, staff see everything
-DROP POLICY IF EXISTS "View own or staff reservations" ON Reservation;
 CREATE POLICY "View own or staff reservations" ON Reservation
     FOR SELECT USING (
         EXISTS (
@@ -107,12 +101,10 @@ CREATE POLICY "View own or staff reservations" ON Reservation
     );
 
 -- INSERT: any logged-in user can create a reservation
-DROP POLICY IF EXISTS "Authenticated users can create reservations" ON Reservation;
 CREATE POLICY "Authenticated users can create reservations" ON Reservation
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- UPDATE: staff can change status (Pending → Booked, etc.)
-DROP POLICY IF EXISTS "Staff can update reservations" ON Reservation;
 CREATE POLICY "Staff can update reservations" ON Reservation
     FOR UPDATE TO authenticated
     USING  (auth.jwt()->>'email' IN (SELECT email FROM Staff))
@@ -124,12 +116,10 @@ CREATE POLICY "Staff can update reservations" ON Reservation
 -- ─────────────────────────────────────────────────────────────────────────
 
 -- Any authenticated user can link a guest during booking
-DROP POLICY IF EXISTS "Authenticated can link guests" ON ReservationGuest;
 CREATE POLICY "Authenticated can link guests" ON ReservationGuest
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- Guests see their own links, staff see all
-DROP POLICY IF EXISTS "View own or staff guest links" ON ReservationGuest;
 CREATE POLICY "View own or staff guest links" ON ReservationGuest
     FOR SELECT USING (
         EXISTS (
@@ -145,11 +135,9 @@ CREATE POLICY "View own or staff guest links" ON ReservationGuest
 -- STEP 7: UserAccount — own account only
 -- ─────────────────────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "Users can view own account" ON UserAccount;
 CREATE POLICY "Users can view own account" ON UserAccount
     FOR SELECT USING (auth.jwt()->>'email' = email);
 
-DROP POLICY IF EXISTS "Users can create own account" ON UserAccount;
 CREATE POLICY "Users can create own account" ON UserAccount
     FOR INSERT WITH CHECK (auth.jwt()->>'email' = email);
 
@@ -158,7 +146,6 @@ CREATE POLICY "Users can create own account" ON UserAccount
 -- STEP 8: Payment — guests see own, staff see all
 -- ─────────────────────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "View own or staff payments" ON Payment;
 CREATE POLICY "View own or staff payments" ON Payment
     FOR SELECT USING (
         EXISTS (
@@ -171,7 +158,6 @@ CREATE POLICY "View own or staff payments" ON Payment
         OR auth.jwt()->>'email' IN (SELECT email FROM Staff)
     );
 
-DROP POLICY IF EXISTS "Authenticated can create payments" ON Payment;
 CREATE POLICY "Authenticated can create payments" ON Payment
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 

@@ -33,6 +33,8 @@ const roleAccess: Record<string, string[]> = {
   Manager:      ['/staff/dashboard', '/staff/rooms', '/staff/reservations', '/staff/guests', '/staff/reports'],
   Housekeeping: ['/staff/rooms'],
   Accountant:   ['/staff/dashboard'],
+  FrontDesk:    ['/staff/dashboard', '/staff/reservations', '/staff/guests'],
+  Concierge:    ['/staff/dashboard', '/staff/guests'],
 };
 
 // Default landing page per role
@@ -40,6 +42,8 @@ const roleDefaultPage: Record<string, string> = {
   Manager:      '/staff/dashboard',
   Housekeeping: '/staff/rooms',
   Accountant:   '/staff/dashboard',
+  FrontDesk:    '/staff/dashboard',
+  Concierge:    '/staff/dashboard',
 };
 
 // Protected Route Component for Staff — enforces role-based access

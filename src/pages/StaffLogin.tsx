@@ -12,6 +12,8 @@ const roleDefaultPage: Record<string, string> = {
   Manager:      '/staff/dashboard',
   Housekeeping: '/staff/rooms',
   Accountant:   '/staff/dashboard',
+  FrontDesk:    '/staff/dashboard',
+  Concierge:    '/staff/dashboard',
 };
 
 export default function StaffLogin() {
@@ -103,8 +105,9 @@ export default function StaffLogin() {
                         </div>
                         <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
                             <p className="font-medium mb-1">Demo Credentials:</p>
-                            <p>admin@hotel.com / admin123</p>
-                            <p>frontdesk@hotel.com / staff123</p>
+                            <p>housekeeping@hotel.com / house123</p>
+                            <p>accountant@hotel.com / accountant123</p>
+                            <p>manager@hotel.com / manager123</p>
                         </div>
                     </CardContent>
                     <CardFooter>

@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const login = async (email: string, password: string, userType: 'Guest' | 'Staff'): Promise<boolean> => {
         setIsLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
@@ -124,18 +124,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Auth state change listener will handle fetching user details
-        // Verify staff role — use maybeSingle (no timeout wrapper needed, Supabase is fast)
+        // Verify staff role — pass the fresh session token explicitly
         if (userType === 'Staff') {
             try {
-                const staffCheck = await rawQuery('staff', { select: 'staff_id', filters: `email=eq.${encodeURIComponent(email)}` });
+                const token = authData.session?.access_token;
+                console.log('Verifying staff with email:', email);
+                console.log('Token:', token ? 'present' : 'missing');
+                
+                const staffCheck = await rawQuery('staff', { 
+                    select: 'staff_id,email,role', 
+                    filters: `email=eq.${encodeURIComponent(email)}`,
+                    token 
+                });
+                
+                console.log('Staff check result:', staffCheck);
                 const staff = staffCheck.data?.[0] || null;
 
                 if (!staff) {
+                    console.error('No staff record found for:', email);
                     await supabase.auth.signOut();
                     toast.error("Unauthorized: No staff account found.");
                     setIsLoading(false);
                     return false;
                 }
+                
+                console.log('Staff verified:', staff);
             } catch (e) {
                 console.error("Staff verification error:", e);
                 await supabase.auth.signOut();

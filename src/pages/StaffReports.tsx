@@ -1,6 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Users, CreditCard, Banknote, Globe, BarChart3 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { staff, reservations, getRevenueByMethod, payments } from '@/data/mockData';
+import { reservations, getRevenueByMethod, payments } from '@/data/mockData';
+import { rawQuery } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import type { Staff } from '@/types/hotel';
 import {
   Table,
   TableBody,
@@ -12,13 +16,58 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function StaffReports() {
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   const revenueByMethod = getRevenueByMethod();
+
+  // Fetch staff from database
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        setIsLoading(true);
+        // Staff table has RLS - need authenticated token
+        const { data, error } = await rawQuery('staff', { order: 'first_name.asc' });
+        if (error) {
+          console.error('Error fetching staff:', error);
+          return;
+        }
+        console.log('Raw staff data:', data);
+        const mappedStaff = (data || []).map((s: any) => ({
+          Staff_ID: s.staff_id || s.Staff_ID,
+          First_Name: s.first_name || s.First_Name,
+          Last_Name: s.last_name || s.Last_Name,
+          Email: s.email || s.Email,
+          Role: s.role || s.Role,
+          Shift: s.shift || s.Shift,
+          Hire_Date: s.hire_date || s.Hire_Date,
+          Status: s.status || s.Status,
+        }));
+        console.log('Mapped staff:', mappedStaff);
+        setStaff(mappedStaff);
+      } catch (err) {
+        console.error('Failed to fetch staff:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Only fetch if user is authenticated
+    if (user) {
+      fetchStaff();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user]);
   
-  // Calculate reservations handled by each staff
-  const staffReservations = staff.map(s => {
-    const handled = reservations.filter(r => r.Staff_ID === s.Staff_ID).length;
-    return { ...s, reservationsHandled: handled };
-  }).sort((a, b) => b.reservationsHandled - a.reservationsHandled);
+  // Calculate reservations handled by each staff (exclude Manager)
+  const staffReservations = staff
+    .filter(s => s.Role !== 'Manager')
+    .map(s => {
+      const handled = reservations.filter(r => r.Staff_ID === s.Staff_ID).length;
+      return { ...s, reservationsHandled: handled };
+    })
+    .sort((a, b) => b.reservationsHandled - a.reservationsHandled);
 
   const formatCurrency = (amount: number) => 
     new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
@@ -70,32 +119,46 @@ export default function StaffReports() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {staffReservations.map((member, index) => (
-                <TableRow 
-                  key={member.Staff_ID}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
-                        {member.First_Name[0]}{member.Last_Name[0]}
-                      </div>
-                      <span className="font-medium">
-                        {member.First_Name} {member.Last_Name}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[member.Role] || 'bg-gray-100 text-gray-800'}`}>
-                      {member.Role}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {member.reservationsHandled}
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                    Loading staff...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : staffReservations.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                    No staff members found. Please add staff to the database.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                staffReservations.map((member, index) => (
+                  <TableRow 
+                    key={member.Staff_ID}
+                    className="animate-fade-in"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                          {member.First_Name[0]}{member.Last_Name[0]}
+                        </div>
+                        <span className="font-medium">
+                          {member.First_Name} {member.Last_Name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[member.Role] || 'bg-gray-100 text-gray-800'}`}>
+                        {member.Role}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {member.reservationsHandled}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
