@@ -11,7 +11,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useReservations } from "@/context/ReservationContext";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 interface GuestBookingDialogProps {
     roomName: string;
@@ -22,7 +25,9 @@ interface GuestBookingDialogProps {
 }
 
 export function GuestBookingDialog({ roomName, price, roomID, initialCheckIn, initialCheckOut }: GuestBookingDialogProps) {
+    const navigate = useNavigate();
     const { addReservation } = useReservations();
+    const { user, isAuthenticated } = useAuth();
     const [open, setOpen] = useState(false);
     const [checkIn, setCheckIn] = useState(initialCheckIn || "");
     const [checkOut, setCheckOut] = useState(initialCheckOut || "");
@@ -35,19 +40,38 @@ export function GuestBookingDialog({ roomName, price, roomID, initialCheckIn, in
         }
     }, [open, initialCheckIn, initialCheckOut]);
 
+    // Auto-fill guest info from logged-in user
     const [guestName, setGuestName] = useState("");
     const [email, setEmail] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Pre-fill form with user data when dialog opens
+    useEffect(() => {
+        if (open && user?.guestData) {
+            setGuestName(`${user.guestData.First_Name} ${user.guestData.Last_Name}`);
+            setEmail(user.guestData.Email);
+        }
+    }, [open, user]);
+
+    const handleBookClick = () => {
+        // Check if user is authenticated before allowing booking
+        if (!isAuthenticated || user?.User_Type !== 'Guest') {
+            toast.error("Please sign in to book a room");
+            navigate('/login');
+            return;
+        }
+        setOpen(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        setTimeout(() => {
+        try {
             const [firstName, ...lastNameParts] = guestName.split(' ');
             const lastName = lastNameParts.join(' ') || '';
 
-            addReservation({
+            await addReservation({
                 Room_ID: roomID,
                 Staff_ID: 0,
                 Check_In: checkIn,
@@ -60,20 +84,24 @@ export function GuestBookingDialog({ roomName, price, roomID, initialCheckIn, in
                 }
             });
 
-            setIsSubmitting(false);
             setOpen(false);
             setCheckIn("");
             setCheckOut("");
             setGuestName("");
             setEmail("");
-        }, 1000);
+        } catch (error) {
+            // Error handling is done in context, but we catching here to stop spinner
+            console.error(error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button className="w-full">Book Now</Button>
-            </DialogTrigger>
+            <Button className="w-full" onClick={handleBookClick}>
+                Book Now
+            </Button>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Book {roomName}</DialogTitle>
@@ -135,3 +163,4 @@ export function GuestBookingDialog({ roomName, price, roomID, initialCheckIn, in
         </Dialog>
     );
 }
+

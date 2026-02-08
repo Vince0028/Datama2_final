@@ -1,0 +1,354 @@
+DATAMA1 
+
+Finals Project – ERD & SQL Implementation 
+
+Project Title: Database Design and Implementation for a Realistic Company 
+
+Hotel Reservation System 
+
+Group Documentation 
+
+
+
+Asia Pacific College 
+ 
+By 
+GROUP 1 
+ALOBIN, VINCE NELMAR P. 
+CARPIO, BEEJAY A. 
+DELA CRUZ, RANIEL Q. 
+GARCIA, ASHTON BRIAN S. 
+VILLAFLOR, NATHANIEL 
+
+
+
+RHEA-LUZ VALBUENA 
+
+Database Management 1 Professor 
+
+ 
+
+ 
+
+Project Description  
+
+In this project, your group will design and implement a relational database system for a realistic company scenario. You will be using MySQL Workbench for the design to be translated to MySQL database. The project involves:  
+
+Analyzing business requirements  
+
+Creating an ERD (Entity–Relationship Diagram) to model the system, with normalization  
+
+Implementing the database in SQL (DDL + DML)  
+
+Running queries to demonstrate functionality  
+
+Presenting your solution as a group  
+
+ 
+
+ 
+
+Hotel Reservation System 
+
+A hotel wants a database to handle guests, rooms, reservations, staff, payments, and user authentication.  
+
+Business Rules  
+
+Each guest has a unique GuestID, with name, phone, email, and address.  
+
+Each room has a unique RoomID, with type (Single, Double, Deluxe, Suite, Family, Economy), rate, and availability status (Available, Occupied, Maintenance).  
+
+A reservation (ReservationID) links a guest to a room, with check-in/check-out dates and status (Pending, Booked, CheckedIn, CheckedOut, Cancelled).  
+
+Each reservation may include multiple guests (e.g., families) with guest types (Primary, Additional).  
+
+Staff (StaffID, name, role, shift) handle reservations. Roles include: Manager, FrontDesk, Housekeeping, Concierge, Accountant.  
+
+Payments (PaymentID, amount, date, method, status) are linked to reservations. Methods: Card, Cash, Online. Status: Paid, Pending.  
+
+User accounts enable authentication for both guests (self-registration) and staff (admin-created accounts).
+
+Sample Queries  
+
+Find all available rooms of type "Suite."  
+
+List guests with active reservations.  
+
+Show total revenue from reservations per month.  
+
+Which staff handled the most reservations?  
+
+Average length of stay for guests.  
+
+ 
+
+ENTITY RELATIONSHIP DIAGRAM 
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Business Rules 
+ 
+
+Business Rules 
+
+Room Types and Rooms 
+* One Room Type categorizes one or many Rooms. One or many Rooms is categorized by one Room Type. 
+
+Staff and Reservations 
+* One Staff member processes one or many Reservations. One or many Reservations is processed by one Staff member. 
+
+Rooms and Reservations 
+* One Room can be booked by one or many Reservations. One or many Reservations can only book one Room. 
+
+Reservation and Reservation Guest 
+* One Reservation can include one or many Reservation guest. One or many Reservation guest can only include one Reservation. 
+
+ 
+
+Guest and Reservation Guest 
+* One Guest can be linked to one or many Reservation guest. One or many Reservation guest is linked to one Guest. 
+
+ 
+
+Payment and Reservation 
+* One or many Payments belongs to one Reservation.  One Reservation belongs to one or many Payments. 
+
+UserAccount and Guest/Staff
+* One UserAccount belongs to one Guest OR one Staff member. One Guest or Staff member has one UserAccount.
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+CREATING TABLES 
+
+CREATE TABLE Guest ( 
+    Guest_ID INT NOT NULL, 
+    First_Name VARCHAR(100) NOT NULL, 
+    Middle_Name VARCHAR(100) NOT NULL, 
+    Last_Name VARCHAR(100) NOT NULL, 
+    Phone VARCHAR(20) NOT NULL, 
+    Email VARCHAR(100) NOT NULL, 
+    Address VARCHAR(100) NOT NULL, 
+    City VARCHAR(100) NOT NULL, 
+    Postal_Code INT NOT NULL, 
+    PRIMARY KEY (Guest_ID) 
+); 
+
+  
+
+CREATE TABLE RoomType ( 
+    RoomType_ID INT NOT NULL, 
+    Type_Name VARCHAR(50) NOT NULL, -- Values: Single, Double, Deluxe, Suite, Family, Economy
+    Base_Rate DECIMAL(10,2) NOT NULL, 
+    PRIMARY KEY (RoomType_ID) 
+); 
+
+  
+
+CREATE TABLE Room ( 
+    Room_ID INT NOT NULL, 
+    Room_Number VARCHAR(10) NOT NULL, 
+    RoomType_ID INT NOT NULL, 
+    Status VARCHAR(50) NOT NULL, -- Values: Available, Occupied, Maintenance
+    PRIMARY KEY (Room_ID), 
+    FOREIGN KEY (RoomType_ID) REFERENCES RoomType(RoomType_ID) 
+); 
+
+  
+
+CREATE TABLE Staff ( 
+    Staff_ID INT NOT NULL, 
+    First_Name VARCHAR(100) NOT NULL, 
+    Last_Name VARCHAR(100) NOT NULL, 
+    Role VARCHAR(50) NOT NULL, -- Values: Manager, FrontDesk, Housekeeping, Concierge, Accountant
+    Shift VARCHAR(50) NOT NULL, -- Values: Morning, Afternoon, Night
+    PRIMARY KEY (Staff_ID) 
+); 
+
+  
+
+CREATE TABLE Reservation ( 
+    Reservation_ID INT NOT NULL, 
+    Room_ID INT NOT NULL, 
+    Staff_ID INT NOT NULL, 
+    Check_In DATE NOT NULL, 
+    Check_Out DATE NOT NULL, 
+    Status VARCHAR(50) NOT NULL, -- Values: Pending, Booked, CheckedIn, CheckedOut, Cancelled
+    Total_Amount DECIMAL(10,2) NOT NULL, 
+    PRIMARY KEY (Reservation_ID), 
+    FOREIGN KEY (Room_ID) REFERENCES Room(Room_ID), 
+    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID) 
+); 
+
+  
+
+CREATE TABLE ReservationGuest ( 
+    ResGuest_ID INT NOT NULL, 
+    Reservation_ID INT NOT NULL, 
+    Guest_ID INT NOT NULL, 
+    Guest_Type VARCHAR(50) NOT NULL, -- Values: Primary, Additional
+    PRIMARY KEY (ResGuest_ID), 
+    FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID), 
+    FOREIGN KEY (Guest_ID) REFERENCES Guest(Guest_ID) 
+); 
+
+  
+
+CREATE TABLE Payment ( 
+    Payment_ID INT NOT NULL, 
+    Reservation_ID INT NOT NULL, 
+    Amount DECIMAL(10,2) NOT NULL, 
+    Payment_Date DATETIME NOT NULL,
+    Method VARCHAR(50) NOT NULL, -- Values: Card, Cash, Online
+    Status VARCHAR(50) NOT NULL, -- Values: Paid, Pending
+    PRIMARY KEY (Payment_ID), 
+    FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) 
+);
+
+CREATE TABLE UserAccount (
+    User_ID INT NOT NULL,
+    Email VARCHAR(100) NOT NULL UNIQUE,
+    Password_Hash VARCHAR(255) NOT NULL,
+    User_Type VARCHAR(20) NOT NULL, -- Values: Guest, Staff
+    Guest_ID INT NULL,
+    Staff_ID INT NULL,
+    Created_At DATETIME NOT NULL,
+    PRIMARY KEY (User_ID),
+    FOREIGN KEY (Guest_ID) REFERENCES Guest(Guest_ID),
+    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID)
+);
+ 
+ 
+
+ 
+
+ 
+
+QUERIES 
+ 
+
+1. List all guests 
+SELECT Guest_ID, First_Name, Last_Name 
+FROM Guest; 
+ 
+ 
+ 
+2. Show available rooms 
+SELECT Room_Number, Status 
+FROM Room 
+WHERE Status = 'Available'; 
+ 
+3. List reservations with assigned staff 
+SELECT Reservation.Reservation_ID, Room.Room_Number, Staff.First_Name, Staff.Last_Name 
+FROM Reservation 
+JOIN Room ON Reservation.Room_ID = Room.Room_ID 
+JOIN Staff ON Reservation.Staff_ID = Staff.Staff_ID; 
+ 
+
+ 
+ 
+4. Show total payment for each reservation 
+SELECT Reservation.Reservation_ID, SUM(Payment.Amount) AS Total_Paid 
+FROM Reservation 
+LEFT JOIN Payment ON Reservation.Reservation_ID = Payment.Reservation_ID 
+GROUP BY Reservation.Reservation_ID; 
+
+ 
+
+ 
+ 
+5. Count how many reservations each room has 
+SELECT Room.Room_Number, COUNT(Reservation.Reservation_ID) AS Total_Reservations 
+FROM Room 
+LEFT JOIN Reservation ON Room.Room_ID = Reservation.Room_ID 
+GROUP BY Room.Room_Number; 
+ 
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+ 
+6. Show total payment by payment method 
+SELECT Method, SUM(Amount) AS Total_Amount 
+FROM Payment 
+GROUP BY Method; 
+ 
+ 
+7. Show the average stay duration 
+SELECT AVG(DATEDIFF(Check_Out, Check_In)) AS Average_Days 
+FROM Reservation; 
+ 
+ 
+8. Show guests who have more than one reservation 
+SELECT Guest.Guest_ID, Guest.First_Name, COUNT(ReservationGuest.Reservation_ID) AS Total_Reservations 
+FROM Guest 
+JOIN ReservationGuest ON Guest.Guest_ID = ReservationGuest.Guest_ID 
+GROUP BY Guest.Guest_ID; 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+9. Show staff ranked by number of handled reservations 
+SELECT Staff.First_Name, Staff.Last_Name, COUNT(Reservation.Reservation_ID) AS Handled 
+FROM Staff 
+LEFT JOIN Reservation ON Staff.Staff_ID = Reservation.Staff_ID 
+GROUP BY Staff.Staff_ID 
+ORDER BY Handled DESC; 
+ 
+ 
+10. Show available rooms of type 'Suite' 
+SELECT Room.Room_Number 
+FROM Room 
+JOIN RoomType ON Room.RoomType_ID = RoomType.RoomType_ID 
+WHERE RoomType.Type_Name = 'Suite' AND Room.Status = 'Available'; 
+ 
+
+ 
+
+ .

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Bed,
@@ -8,9 +8,13 @@ import {
   UserCog,
   ChevronLeft,
   ChevronRight,
-  Hotel
+  Hotel,
+  LogOut,
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
 
 const navigation = [
   { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
@@ -23,6 +27,13 @@ const navigation = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <aside
@@ -73,8 +84,36 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Collapse Button */}
-      <div className="px-3 py-4 border-t border-sidebar-border">
+      {/* User Info & Logout */}
+      <div className="px-3 py-4 border-t border-sidebar-border space-y-3">
+        {user && !collapsed && (
+          <div className="flex items-center gap-3 px-3 py-2 animate-fade-in">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-primary/20">
+              <User className="h-4 w-4 text-sidebar-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {user.staffData?.First_Name} {user.staffData?.Last_Name}
+              </p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">
+                {user.staffData?.Role}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <Button
+          variant="ghost"
+          onClick={handleLogout}
+          className={cn(
+            "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-destructive/10 hover:text-destructive",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <LogOut className="h-5 w-5" />
+          {!collapsed && <span>Logout</span>}
+        </Button>
+
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex w-full items-center justify-center gap-2 px-3 py-2 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
@@ -92,3 +131,4 @@ export function Sidebar() {
     </aside>
   );
 }
+

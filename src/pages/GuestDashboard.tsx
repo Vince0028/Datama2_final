@@ -176,7 +176,7 @@ export default function GuestDashboard() {
             </section>
 
             {/* Testimonials Carousel */}
-            <section className="py-24 px-6 max-w-6xl mx-auto text-center overflow-hidden">
+            <section className="py-24 px-6 max-w-6xl mx-auto text-center">
                 <h2 className="text-4xl font-display font-bold mb-16 text-foreground">Guest Experiences</h2>
 
                 <Carousel

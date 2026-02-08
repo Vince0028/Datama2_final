@@ -5,8 +5,6 @@ import { Bed, Users, Wifi, Wind, Star } from 'lucide-react';
 import { GuestBookingDialog } from '@/components/GuestBookingDialog';
 import { RoomScheduleDialog } from '@/components/RoomScheduleDialog';
 import { useReservations } from '@/context/ReservationContext';
-import { roomTypes } from '@/data/mockData';
-import { Room } from '@/types/hotel';
 
 // Helper to get image based on room type
 const getRoomImage = (type: string) => {
@@ -40,7 +38,7 @@ export default function GuestRooms() {
 
     // Enrich rooms with their type details
     const displayRooms = rooms.map(room => {
-        const type = roomTypes.find(t => t.RoomType_ID === room.RoomType_ID);
+        const type = room.roomType;
         const isAvailable = checkIn && checkOut
             ? checkAvailability(room.Room_ID, checkIn, checkOut)
             : room.Status === 'Available'; // Default to current status if no dates

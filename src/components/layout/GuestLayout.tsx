@@ -1,8 +1,17 @@
 import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Hotel, Bed, Calendar, Home } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Hotel, Bed, Calendar, Home, LogIn, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
+import { useAuth } from '@/context/AuthContext';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface GuestLayoutProps {
     children: ReactNode;
@@ -10,12 +19,19 @@ interface GuestLayoutProps {
 
 export function GuestLayout({ children }: GuestLayoutProps) {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { user, isAuthenticated, logout } = useAuth();
 
     const navigation = [
         { name: 'Home', href: '/', icon: Home },
         { name: 'Rooms', href: '/guest/rooms', icon: Bed },
         { name: 'My Booking', href: '/guest/booking', icon: Calendar },
     ];
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -50,11 +66,51 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                                 </Link>
                             );
                         })}
-                        <Link to="/staff/dashboard">
-                            <Button variant="ghost" size="sm" className="ml-4 text-xs text-muted-foreground">
-                                Staff Access
-                            </Button>
-                        </Link>
+
+                        <div className="flex items-center gap-2 ml-4">
+                            {isAuthenticated && user?.User_Type === 'Guest' ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="gap-2">
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
+                                                <User className="h-3.5 w-3.5 text-primary" />
+                                            </div>
+                                            <span className="hidden sm:inline-block text-sm">
+                                                {user.guestData?.First_Name}
+                                            </span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuLabel>
+                                            {user.guestData?.First_Name} {user.guestData?.Last_Name}
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem asChild>
+                                            <Link to="/guest/booking">My Bookings</Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                                            <LogOut className="h-4 w-4 mr-2" />
+                                            Logout
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <>
+                                    <Link to="/login">
+                                        <Button variant="ghost" size="sm" className="gap-2">
+                                            <LogIn className="h-4 w-4" />
+                                            <span className="hidden sm:inline-block">Login</span>
+                                        </Button>
+                                    </Link>
+                                    <Link to="/signup">
+                                        <Button size="sm" className="hidden sm:inline-flex">
+                                            Sign Up
+                                        </Button>
+                                    </Link>
+                                </>
+                            )}
+                        </div>
                     </nav>
                 </div>
             </header>
@@ -75,3 +131,4 @@ export function GuestLayout({ children }: GuestLayoutProps) {
         </div>
     );
 }
+
