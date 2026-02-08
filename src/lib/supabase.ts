@@ -11,6 +11,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Data queries use rawQuery() below because supabase.from().select() hangs.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Cached auth token — updated by AuthContext whenever session changes.
+// Avoids calling supabase.auth.getSession() which can hang.
+let _cachedToken: string | null = null;
+export function setCachedToken(token: string | null) { _cachedToken = token; }
+
 // ── Raw REST helper — bypasses supabase-js for data fetching ────────────
 // supabase.from().select() hangs in this environment, but raw fetch works.
 export async function rawQuery<T = any>(
@@ -20,12 +25,11 @@ export async function rawQuery<T = any>(
         filters?: string;        // e.g. "room_id=eq.1"
         order?: string;          // e.g. "room_id.asc"
         single?: boolean;
+        token?: string;          // pass token directly to avoid getSession()
     }
 ): Promise<{ data: T[] | null; error: any }> {
     try {
-        // Use session token when available (needed for RLS-protected tables like staff)
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token || supabaseAnonKey;
+        const token = options?.token || _cachedToken || supabaseAnonKey;
 
         const select = options?.select || '*';
         let url = `${supabaseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
@@ -64,9 +68,7 @@ export async function rawMutate<T = any>(
     } = {}
 ): Promise<{ data: T | null; error: any }> {
     try {
-        // Get the current session token for authenticated mutations
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token || supabaseAnonKey;
+        const token = _cachedToken || supabaseAnonKey;
 
         let url = `${supabaseUrl}/rest/v1/${table}`;
         if (options.filters) url += `?${options.filters}`;

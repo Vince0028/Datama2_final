@@ -15,21 +15,12 @@ export default function StaffLogin() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
-    // Redirect if already logged in as staff (wait for init to complete)
+    // Redirect if already logged in as staff
     useEffect(() => {
         if (!isInitializing && isAuthenticated && user?.User_Type === 'Staff') {
             navigate('/staff/dashboard', { replace: true });
         }
     }, [isInitializing, isAuthenticated, user, navigate]);
-
-    // Show loading while checking session
-    if (isInitializing) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

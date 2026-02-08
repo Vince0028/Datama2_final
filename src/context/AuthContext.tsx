@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase, rawQuery, rawMutate } from '@/lib/supabase';
+import { supabase, rawQuery, rawMutate, setCachedToken } from '@/lib/supabase';
 import type { AuthUser } from '@/types/auth';
 import type { Guest } from '@/types/hotel';
 import { toast } from 'sonner';
@@ -21,13 +21,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
 
-    // Fetch user details based on email with timeout protection
-    const fetchUserDetails = async (email: string) => {
+    // Fetch user details based on email — token passed to avoid getSession() hang
+    const fetchUserDetails = async (email: string, token?: string) => {
         try {
-            // Query staff and guest tables in PARALLEL instead of sequentially
             const [staffRes, guestRes] = await Promise.all([
-                rawQuery('staff', { filters: `email=eq.${encodeURIComponent(email)}` }),
-                rawQuery('guest', { filters: `email=eq.${encodeURIComponent(email)}` }),
+                rawQuery('staff', { filters: `email=eq.${encodeURIComponent(email)}`, token }),
+                rawQuery('guest', { filters: `email=eq.${encodeURIComponent(email)}`, token }),
             ]);
 
             const staffData = staffRes.data?.[0] || null;
@@ -80,8 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let initialised = false;
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            // Cache the token so rawQuery/rawMutate use it instantly
+            setCachedToken(session?.access_token || null);
+
             if (session?.user?.email) {
-                await fetchUserDetails(session.user.email);
+                await fetchUserDetails(session.user.email, session.access_token);
             } else {
                 setUser(null);
             }
@@ -100,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null);
                 setIsInitializing(false);
             }
-        }, 3000);
+        }, 1000);
 
         return () => {
             clearTimeout(safetyTimer);
