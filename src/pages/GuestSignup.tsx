@@ -61,8 +61,8 @@ export default function GuestSignup() {
                     <Link to="/login" className="absolute left-4 top-4 text-muted-foreground hover:text-foreground transition-colors">
                         <ArrowLeft className="h-5 w-5" />
                     </Link>
-                    <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                        <span className="text-3xl">✨</span>
+                    <div className="mx-auto w-auto h-16 flex items-center justify-center mb-4">
+                        <img src="/website_logo.png" alt="Nano Banan" className="h-16 w-auto" />
                     </div>
                     <CardTitle className="text-2xl font-display">Create Account</CardTitle>
                     <CardDescription>Join us and start booking your perfect stay</CardDescription>

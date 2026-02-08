@@ -29,8 +29,8 @@ export default function Login() {
 
             <Card className="w-full max-w-md relative z-10 shadow-2xl border-none bg-background/95 backdrop-blur-sm">
                 <CardHeader className="text-center space-y-2 pb-2">
-                    <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                        <span className="text-3xl">🏨</span>
+                    <div className="mx-auto w-auto h-16 flex items-center justify-center mb-4">
+                        <img src="/website_logo.png" alt="Nano Banan" className="h-16 w-auto" />
                     </div>
                     <CardTitle className="text-2xl font-display">Welcome Back</CardTitle>
                     <CardDescription>Sign in to your guest account</CardDescription>

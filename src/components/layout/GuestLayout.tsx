@@ -50,9 +50,7 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                 <div className="container flex h-16 items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link to="/" className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                                <Hotel className="h-5 w-5" />
-                            </div>
+                            <img src="/website_logo.png" alt="Nano Banan" className="h-10 w-auto" />
                             <span className="font-display font-bold text-lg hidden sm:inline-block">
                                 Hotel Reservation
                             </span>
@@ -131,9 +129,7 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                 <div className="container py-8">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
-                                <Hotel className="h-5 w-5 text-white" />
-                            </div>
+                            <img src="/website_logo.png" alt="Nano Banan" className="h-8 w-auto" />
                             <span className="font-display font-semibold text-white">Hotel Reservation</span>
                         </div>
                         <div className="flex items-center gap-6 text-sm">
@@ -142,7 +138,7 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                             <span onClick={() => setContactOpen(true)} className="hover:text-white transition-colors cursor-pointer">Contact Us</span>
                         </div>
                         <p className="text-sm text-slate-400">
-                            © 2026 Hotel Reservation System
+                            © 2026 Nano Banan
                         </p>
                     </div>
                 </div>
@@ -159,30 +155,30 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                         <section>
                             <h3 className="font-semibold text-base mb-2">1. Information We Collect</h3>
                             <p className="text-muted-foreground">
-                                We collect information you provide directly to us, including your name, email address, phone number, 
-                                and payment information when you make a reservation. We also collect information about your device 
+                                We collect information you provide directly to us, including your name, email address, phone number,
+                                and payment information when you make a reservation. We also collect information about your device
                                 and how you interact with our services.
                             </p>
                         </section>
                         <section>
                             <h3 className="font-semibold text-base mb-2">2. How We Use Your Information</h3>
                             <p className="text-muted-foreground">
-                                We use your information to process reservations, communicate with you about your bookings, 
-                                improve our services, and send you promotional materials (with your consent). We do not sell 
+                                We use your information to process reservations, communicate with you about your bookings,
+                                improve our services, and send you promotional materials (with your consent). We do not sell
                                 your personal information to third parties.
                             </p>
                         </section>
                         <section>
                             <h3 className="font-semibold text-base mb-2">3. Data Security</h3>
                             <p className="text-muted-foreground">
-                                We implement industry-standard security measures to protect your personal information. 
+                                We implement industry-standard security measures to protect your personal information.
                                 All payment transactions are processed through secure, encrypted connections.
                             </p>
                         </section>
                         <section>
                             <h3 className="font-semibold text-base mb-2">4. Your Rights</h3>
                             <p className="text-muted-foreground">
-                                You have the right to access, correct, or delete your personal information at any time. 
+                                You have the right to access, correct, or delete your personal information at any time.
                                 You may also opt out of marketing communications by contacting us at privacy@hotel.com.
                             </p>
                         </section>
@@ -201,28 +197,28 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                         <section>
                             <h3 className="font-semibold text-base mb-2">1. Reservation & Cancellation Policy</h3>
                             <p className="text-muted-foreground">
-                                All reservations are subject to availability. Cancellations made 48 hours before check-in 
+                                All reservations are subject to availability. Cancellations made 48 hours before check-in
                                 will receive a full refund. Cancellations made within 48 hours are subject to a one-night charge.
                             </p>
                         </section>
                         <section>
                             <h3 className="font-semibold text-base mb-2">2. Check-in & Check-out</h3>
                             <p className="text-muted-foreground">
-                                Standard check-in time is 3:00 PM and check-out time is 11:00 AM. Early check-in or late 
+                                Standard check-in time is 3:00 PM and check-out time is 11:00 AM. Early check-in or late
                                 check-out may be available upon request and subject to additional charges.
                             </p>
                         </section>
                         <section>
                             <h3 className="font-semibold text-base mb-2">3. Payment Terms</h3>
                             <p className="text-muted-foreground">
-                                Full payment is required at the time of booking. We accept major credit cards and online payment methods. 
+                                Full payment is required at the time of booking. We accept major credit cards and online payment methods.
                                 All prices are in Philippine Pesos (₱) and include applicable taxes unless otherwise stated.
                             </p>
                         </section>
                         <section>
                             <h3 className="font-semibold text-base mb-2">4. Guest Conduct</h3>
                             <p className="text-muted-foreground">
-                                Guests are expected to respect hotel property and other guests. Smoking is prohibited in all rooms. 
+                                Guests are expected to respect hotel property and other guests. Smoking is prohibited in all rooms.
                                 Any damage to hotel property will be charged to the guest's account.
                             </p>
                         </section>
