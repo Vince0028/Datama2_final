@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Bed, Filter } from 'lucide-react';
+import { Bed, Filter, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
 import { useReservations } from '@/context/ReservationContext';
 import { cn } from '@/lib/utils';
 import {
@@ -18,14 +19,15 @@ type FilterStatus = 'All' | 'Available' | 'Occupied' | 'Maintenance';
 type FilterType = 'All' | string;
 
 export default function Rooms() {
-  const { rooms, updateRoomStatus } = useReservations();
+  const { user } = useAuth();
+  const { rooms, updateRoomStatus, refreshData } = useReservations();
+
+  const isReadOnly = user?.staffData?.Role === 'ReservationAgent';
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('All');
   const [typeFilter, setTypeFilter] = useState<FilterType>('All');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Use real data from context, no need to map mock types if context already provides it
-  // But context maps roomType from DB. 
-  // If DB has roomType, we use it. If not, we might need a fallback.
-  // The context already maps it to `roomType` property.
+  // Use real data from context
   const enrichedRooms = rooms;
 
   const filteredRooms = enrichedRooms.filter(room => {
@@ -47,11 +49,26 @@ export default function Rooms() {
     updateRoomStatus(roomId, value as Room['Status']);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <PageHeader
         title="Room Administration"
         description="Manage hotel inventory and status"
+        action={
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+            Refresh
+          </Button>
+        }
       />
 
       {/* Filters */}
@@ -139,6 +156,7 @@ export default function Rooms() {
               <Select
                 value={room.Status}
                 onValueChange={(value) => handleStatusChange(room.Room_ID, value)}
+                disabled={isReadOnly}
               >
                 <SelectTrigger className="w-full bg-background/50">
                   <SelectValue placeholder="Select status" />
@@ -154,12 +172,14 @@ export default function Rooms() {
         ))}
       </div>
 
-      {filteredRooms.length === 0 && (
-        <div className="text-center py-12">
-          <Bed className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-lg font-medium text-muted-foreground">No rooms match your filters</p>
-        </div>
-      )}
-    </div>
+      {
+        filteredRooms.length === 0 && (
+          <div className="text-center py-12">
+            <Bed className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium text-muted-foreground">No rooms match your filters</p>
+          </div>
+        )
+      }
+    </div >
   );
 }

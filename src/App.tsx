@@ -31,21 +31,21 @@ const queryClient = new QueryClient();
 
 // Map each staff role to the pages they can access
 const roleAccess: Record<string, string[]> = {
-  Manager:          ['/staff/dashboard', '/staff/rooms', '/staff/reservations', '/staff/guests', '/staff/reports'],
-  Housekeeping:     ['/staff/rooms'],
-  Accountant:       ['/staff/dashboard'],
-  FrontDesk:        ['/staff/dashboard', '/staff/reservations', '/staff/guests'],
-  Concierge:        ['/staff/dashboard', '/staff/guests'],
-  ReservationAgent: ['/staff/dashboard', '/staff/reservations'],
+  Manager: ['/staff/dashboard', '/staff/rooms', '/staff/reservations', '/staff/guests', '/staff/reports'],
+  Housekeeping: ['/staff/rooms'],
+  Accountant: ['/staff/dashboard'],
+  FrontDesk: ['/staff/dashboard', '/staff/reservations', '/staff/guests'],
+  Concierge: ['/staff/dashboard', '/staff/guests'],
+  ReservationAgent: ['/staff/dashboard', '/staff/reservations', '/staff/rooms'],
 };
 
 // Default landing page per role
 const roleDefaultPage: Record<string, string> = {
-  Manager:          '/staff/dashboard',
-  Housekeeping:     '/staff/rooms',
-  Accountant:       '/staff/dashboard',
-  FrontDesk:        '/staff/dashboard',
-  Concierge:        '/staff/dashboard',
+  Manager: '/staff/dashboard',
+  Housekeeping: '/staff/rooms',
+  Accountant: '/staff/dashboard',
+  FrontDesk: '/staff/dashboard',
+  Concierge: '/staff/dashboard',
   ReservationAgent: '/staff/dashboard',
 };
 

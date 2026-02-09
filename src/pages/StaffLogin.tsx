@@ -109,6 +109,7 @@ export default function StaffLogin() {
                             <p>housekeeping@hotel.com / house123</p>
                             <p>accountant@hotel.com / accountant123</p>
                             <p>manager@hotel.com / manager123</p>
+                            <p>reservation@hotel.com / reservation123</p>
                         </div>
                     </CardContent>
                     <CardFooter>

@@ -8,6 +8,13 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
@@ -43,6 +50,7 @@ export function GuestBookingDialog({ roomName, price, roomID, initialCheckIn, in
     // Auto-fill guest info from logged-in user
     const [guestName, setGuestName] = useState("");
     const [email, setEmail] = useState("");
+    const [paymentMethod, setPaymentMethod] = useState("GCash");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Pre-fill form with user data when dialog opens
@@ -81,7 +89,8 @@ export function GuestBookingDialog({ roomName, price, roomID, initialCheckIn, in
                     First_Name: firstName,
                     Last_Name: lastName,
                     Email: email
-                }
+                },
+                paymentMethod
             });
 
             setOpen(false);
@@ -152,6 +161,18 @@ export function GuestBookingDialog({ roomName, price, roomID, initialCheckIn, in
                                 onChange={(e) => setCheckOut(e.target.value)}
                             />
                         </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="paymentMethod">Payment Method</Label>
+                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select payment method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="GCash">GCash</SelectItem>
+                                <SelectItem value="PayPal">PayPal</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={isSubmitting}>

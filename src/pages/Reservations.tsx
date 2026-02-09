@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { StaffBookingDialog } from '@/components/StaffBookingDialog';
 
 // Format ID with leading zeros (e.g., 1 → 001)
 const formatId = (id: number, digits = 3) => String(id).padStart(digits, '0');
@@ -57,10 +58,7 @@ export default function Reservations() {
         title="Reservations"
         description="Manage bookings and approvals"
         action={
-          <Button className="gap-2" onClick={() => toast.info("Create feature disabled in demo")}>
-            <Plus className="h-4 w-4" />
-            New Reservation
-          </Button>
+          <StaffBookingDialog />
         }
       />
 

@@ -61,7 +61,7 @@ export interface Payment {
   Payment_ID: number;
   Reservation_ID: number;
   Amount: number;
-  Method: 'Card' | 'Cash' | 'Online';
+  Method: 'GCash' | 'PayPal' | 'Cash' | 'Card';
   Status: 'Paid' | 'Pending';
 }
 

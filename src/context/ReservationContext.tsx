@@ -7,7 +7,7 @@ import { toast } from "sonner";
 interface ReservationContextType {
     reservations: Reservation[];
     rooms: Room[];
-    addReservation: (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest> }) => Promise<void>;
+    addReservation: (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest>, paymentMethod: string }) => Promise<void>;
     updateStatus: (id: number, status: Reservation['Status']) => Promise<void>;
     metrics: {
         totalRevenue: number;
@@ -188,57 +188,67 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
     const roomTypesRef = useRef<any[]>([]);
     const mountedRef = useRef(true);
 
+    const refreshData = async () => {
+        try {
+            const { rooms: fetchedRooms, roomTypes } = await fetchRoomsFromDB();
+            if (mountedRef.current) {
+                roomTypesRef.current = roomTypes;
+                setRooms(fetchedRooms);
+            }
+
+            const fetchedReservations = await fetchReservationsFromDB();
+            if (mountedRef.current) {
+                setReservations(fetchedReservations);
+            }
+        } catch (err: any) {
+            console.error('[ReservationContext] Add refresh failed:', err);
+            toast.error('Failed to refresh data: ' + err.message);
+        }
+    };
+
     // Refetch data when user changes (login/logout)
     useEffect(() => {
         mountedRef.current = true;
+        refreshData();
 
-        // Fetch all data
-        fetchRoomsFromDB()
-            .then(({ rooms: fetchedRooms, roomTypes }) => {
-                if (!mountedRef.current) return;
-                roomTypesRef.current = roomTypes;
-                setRooms(fetchedRooms);
-            })
-            .catch(err => {
-                console.error('[ReservationContext] Room fetch failed:', err);
-                toast.error('Failed to load rooms: ' + err.message);
-            });
+        // Realtime updates - use unique channel names to avoid conflicts
+        const roomChannelName = `rooms-realtime-${Date.now()}`;
+        const resChannelName = `reservations-realtime-${Date.now()}`;
 
-        fetchReservationsFromDB()
-            .then(fetched => {
-                if (!mountedRef.current) return;
-                setReservations(fetched);
-            })
-            .catch(err => {
-                console.error('[ReservationContext] Reservation fetch failed:', err);
-            });
-
-        // Realtime updates
-        const roomCh = supabase.channel('rooms-realtime').on('postgres_changes',
-            { event: '*', schema: 'public', table: 'room' },
-            (p) => {
-                if (p.eventType === 'UPDATE') {
-                    setRooms(prev => prev.map(r =>
-                        r.Room_ID === (p.new.room_id || p.new.Room_ID)
-                            ? { ...r, Status: p.new.status || p.new.Status }
-                            : r
-                    ));
+        const roomCh = supabase.channel(roomChannelName)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'room' },
+                (p) => {
+                    if (p.eventType === 'UPDATE') {
+                        setRooms(prev => prev.map(r =>
+                            r.Room_ID === (p.new.room_id || p.new.Room_ID)
+                                ? { ...r, Status: p.new.status || p.new.Status }
+                                : r
+                        ));
+                    }
                 }
-            }
-        ).subscribe();
+            )
+            .subscribe();
 
-        const resCh = supabase.channel('reservations-realtime').on('postgres_changes',
-            { event: '*', schema: 'public', table: 'reservation' },
-            (p) => {
-                if (p.eventType === 'UPDATE') {
-                    setReservations(prev => prev.map(res =>
-                        res.Reservation_ID === p.new.reservation_id
-                            ? { ...res, Status: p.new.status, Staff_ID: p.new.staff_id || res.Staff_ID }
-                            : res
-                    ));
+        const resCh = supabase.channel(resChannelName)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'reservation' },
+                async (p) => {
+                    if (p.eventType === 'UPDATE') {
+                        setReservations(prev => prev.map(res =>
+                            res.Reservation_ID === p.new.reservation_id
+                                ? { ...res, Status: p.new.status, Staff_ID: p.new.staff_id || res.Staff_ID }
+                                : res
+                        ));
+                    } else if (p.eventType === 'INSERT') {
+                        // Refresh all reservations when a new one is added
+                        fetchReservationsFromDB().then(fetched => {
+                            if (mountedRef.current) setReservations(fetched);
+                        });
+                    }
                 }
-            }
-        ).subscribe();
+            )
+            .subscribe();
 
         return () => {
             mountedRef.current = false;
@@ -247,7 +257,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
         };
     }, [isAuthenticated, user?.User_Type]);
 
-    const addReservation = async (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest> }) => {
+    const addReservation = async (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest>, paymentMethod: string }) => {
         try {
             const room = rooms.find(r => r.Room_ID === data.Room_ID);
             const baseRate = room?.roomType?.Base_Rate || 0;
@@ -264,10 +274,10 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             // Get fresh token from Supabase session
             const { data: sessionData } = await supabase.auth.getSession();
             const token = sessionData?.session?.access_token;
-            
+
             console.log('[addReservation] Token exists:', !!token);
             console.log('[addReservation] Guest ID:', guestId);
-            
+
             if (!token) {
                 throw new Error("Authentication token missing. Please log in again.");
             }
@@ -276,10 +286,10 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             const { data: newRes, error: resError } = await rawMutate('reservation', 'POST', {
                 body: {
                     room_id: data.Room_ID,
-                    staff_id: null,
+                    staff_id: data.Staff_ID || null,
                     check_in: data.Check_In,
                     check_out: data.Check_Out,
-                    status: 'Pending',
+                    status: data.Status || 'Pending',
                     total_amount: totalAmount
                 },
                 returnData: true,
@@ -298,6 +308,23 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 token: token,
             });
             if (rgError) throw new Error(rgError.message);
+
+            // Insert Payment record
+            const { error: payError } = await rawMutate('payment', 'POST', {
+                body: {
+                    reservation_id: newRes.reservation_id,
+                    amount: totalAmount,
+                    method: data.paymentMethod,
+                    status: 'Pending',
+                    payment_date: new Date().toISOString()
+                },
+                token: token,
+            });
+
+            if (payError) {
+                console.error("Payment creation failed:", payError);
+                toast.error("Reservation created but payment record failed.");
+            }
 
             toast.success("Reservation Request Sent!", {
                 description: "Staff will review your booking shortly."
@@ -331,7 +358,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             }
 
             // Always assign the staff who processed the action
-            const updates: any = { 
+            const updates: any = {
                 status,
                 staff_id: user?.Staff_ID || null
             };
@@ -344,18 +371,18 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 token,
                 returnData: true,
             });
-            
+
             console.log('[updateStatus] PATCH result:', patchData, error);
-            
+
             if (error) throw new Error(error.message);
 
             // Log the action in ReservationLog
             if (user?.Staff_ID) {
-                const actionName = status === 'Booked' ? 'Approved' 
+                const actionName = status === 'Booked' ? 'Approved'
                     : status === 'Cancelled' ? 'Rejected'
-                    : status === 'CheckedIn' ? 'Checked In'
-                    : status === 'CheckedOut' ? 'Checked Out'
-                    : status;
+                        : status === 'CheckedIn' ? 'Checked In'
+                            : status === 'CheckedOut' ? 'Checked Out'
+                                : status;
 
                 await rawMutate('reservationlog', 'POST', {
                     body: {
@@ -380,15 +407,15 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             setReservations(prev =>
                 prev.map(res =>
                     res.Reservation_ID === id
-                        ? { 
-                            ...res, 
-                            Status: status, 
+                        ? {
+                            ...res,
+                            Status: status,
                             Staff_ID: user?.Staff_ID || res.Staff_ID,
                             staff: user?.staffData ? {
                                 Staff_ID: user.Staff_ID!,
                                 First_Name: user.staffData.First_Name,
                                 Last_Name: user.staffData.Last_Name,
-                                Role: user.staffData.Role
+                                Role: user.staffData.Role as any
                             } : res.staff
                         }
                         : res
@@ -425,15 +452,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    // Full refresh (used by refreshData)
-    const refreshData = async () => {
-        const { rooms: fetchedRooms, roomTypes } = await fetchRoomsFromDB();
-        roomTypesRef.current = roomTypes;
-        setRooms(fetchedRooms);
 
-        const fetched = await fetchReservationsFromDB();
-        setReservations(fetched);
-    };
 
     const checkAvailability = (roomId: number, checkIn: string, checkOut: string) => {
         // Client-side check against loaded reservations (efficient for small dataset)
@@ -477,7 +496,17 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <ReservationContext.Provider value={{ reservations, rooms, addReservation, updateStatus, metrics, resetData, updateRoomStatus, checkAvailability, refreshData }}>
+        <ReservationContext.Provider value={{
+            reservations,
+            rooms,
+            addReservation,
+            updateStatus,
+            metrics,
+            resetData,
+            updateRoomStatus,
+            checkAvailability,
+            refreshData
+        }}>
             {children}
         </ReservationContext.Provider>
     );
