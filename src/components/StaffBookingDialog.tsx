@@ -26,7 +26,7 @@ import { Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 export function StaffBookingDialog() {
-    const { addReservation, rooms, checkAvailability, refreshData } = useReservations();
+    const { addWalkInReservation, rooms, checkAvailability, refreshData } = useReservations();
     const { user } = useAuth();
     const [open, setOpen] = useState(false);
 
@@ -69,6 +69,7 @@ export function StaffBookingDialog() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log('[StaffBookingDialog] handleSubmit called');
 
         if (!selectedRoomId) {
             toast.error("Please select a room");
@@ -76,23 +77,31 @@ export function StaffBookingDialog() {
         }
 
         setIsSubmitting(true);
+        console.log('[StaffBookingDialog] Calling addWalkInReservation with:', {
+            roomId: parseInt(selectedRoomId),
+            staffId: user?.Staff_ID,
+            checkIn,
+            checkOut,
+            guestFirstName,
+            guestLastName,
+            guestEmail: email,
+            guestPhone: phone,
+            paymentMethod,
+        });
 
         try {
-            await addReservation({
-                Room_ID: parseInt(selectedRoomId),
-                Staff_ID: user?.Staff_ID || 0,
-                Check_In: checkIn,
-                Check_Out: checkOut,
-                Status: 'Pending', // Walk-ins usually pending approval or payment confirmation? 
-                // User request: "popup same as guest booking phase", which is pending.
-                guest: {
-                    First_Name: guestFirstName,
-                    Last_Name: guestLastName,
-                    Email: email,
-                    Phone: phone
-                },
-                paymentMethod
+            await addWalkInReservation({
+                roomId: parseInt(selectedRoomId),
+                staffId: user?.Staff_ID || 0,
+                checkIn,
+                checkOut,
+                guestFirstName,
+                guestLastName,
+                guestEmail: email,
+                guestPhone: phone,
+                paymentMethod,
             });
+            console.log('[StaffBookingDialog] addWalkInReservation succeeded');
 
             setOpen(false);
             // Reset form
@@ -106,7 +115,7 @@ export function StaffBookingDialog() {
             setPaymentMethod("Cash");
 
         } catch (error) {
-            console.error(error);
+            console.error('[StaffBookingDialog] Error:', error);
         } finally {
             setIsSubmitting(false);
         }

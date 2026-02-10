@@ -19,6 +19,17 @@ interface ReservationContextType {
     updateRoomStatus: (id: number, status: Room['Status']) => Promise<void>;
     checkAvailability: (roomId: number, checkIn: string, checkOut: string) => boolean;
     refreshData: () => Promise<void>;
+    addWalkInReservation: (data: {
+        roomId: number;
+        staffId: number;
+        checkIn: string;
+        checkOut: string;
+        guestFirstName: string;
+        guestLastName: string;
+        guestEmail: string;
+        guestPhone: string;
+        paymentMethod: string;
+    }) => Promise<void>;
 }
 
 const ReservationContext = createContext<ReservationContextType | undefined>(undefined);
@@ -335,6 +346,134 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const addWalkInReservation = async (data: {
+        roomId: number;
+        staffId: number;
+        checkIn: string;
+        checkOut: string;
+        guestFirstName: string;
+        guestLastName: string;
+        guestEmail: string;
+        guestPhone: string;
+        paymentMethod: string;
+    }) => {
+        try {
+            // Get fresh token
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (!token) throw new Error("Authentication token missing.");
+
+            // 1. Check/Create Guest
+            // customized query to find guest by email
+            const { data: existingGuests, error: searchError } = await rawQuery('guest', {
+                filters: `email=eq.${data.guestEmail}`,
+                token
+            });
+
+            if (searchError) throw new Error("Error checking guest: " + searchError.message);
+
+            let guestId: number;
+
+            if (existingGuests && existingGuests.length > 0) {
+                guestId = existingGuests[0].guest_id || existingGuests[0].Guest_ID;
+            } else {
+                // Create new guest
+                const { data: newGuest, error: createGuestError } = await rawMutate('guest', 'POST', {
+                    body: {
+                        first_name: data.guestFirstName,
+                        last_name: data.guestLastName,
+                        email: data.guestEmail,
+                        phone: data.guestPhone,
+                        address: 'Walk-in', // Default for walk-ins
+                        city: 'Walk-in',
+                        postal_code: '0000',
+                    },
+                    returnData: true,
+                    single: true,
+                    token
+                });
+                if (createGuestError) throw new Error("Error creating guest: " + createGuestError.message);
+                guestId = newGuest.guest_id || newGuest.Guest_ID;
+            }
+
+            // 2. Calculate Total Amount
+            const room = rooms.find(r => r.Room_ID === data.roomId);
+            const baseRate = room?.roomType?.Base_Rate || 0;
+            const checkIn = new Date(data.checkIn);
+            const checkOut = new Date(data.checkOut);
+            const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+            const totalAmount = baseRate * nights;
+
+            // 3. Create Reservation (Status = 'Booked' immediately for walk-ins)
+            const { data: newRes, error: resError } = await rawMutate('reservation', 'POST', {
+                body: {
+                    room_id: data.roomId,
+                    staff_id: data.staffId,
+                    check_in: data.checkIn,
+                    check_out: data.checkOut,
+                    status: 'Booked',
+                    total_amount: totalAmount,
+                    notes: 'Walk-in Reservation'
+                },
+                returnData: true,
+                single: true,
+                token
+            });
+            if (resError) throw new Error("Error creating reservation: " + resError.message);
+
+            // 4. Link Guest
+            const { error: rgError } = await rawMutate('reservationguest', 'POST', {
+                body: {
+                    reservation_id: newRes.reservation_id,
+                    guest_id: guestId,
+                    guest_type: 'Primary'
+                },
+                token
+            });
+            if (rgError) throw new Error("Error linking guest: " + rgError.message);
+
+            // 5. Create Payment
+            const { error: payError } = await rawMutate('payment', 'POST', {
+                body: {
+                    reservation_id: newRes.reservation_id,
+                    amount: totalAmount,
+                    method: data.paymentMethod,
+                    status: 'Paid', // Assuming walk-ins pay immediately? Or 'Pending' if not. Let's say 'Pending' to be safe or 'Paid' if cash?
+                    // Let's stick with 'Pending' unless paid by cash.
+                    // Actually usually walk-ins pay at desk. Let's assume Pending for now to match other flows, or Paid if Cash?
+                    // For simplicity, let's use 'Pending' and let the staff update it, OR 'Paid' if it's cash.
+                    // Logic:
+                    // status: data.paymentMethod === 'Cash' ? 'Paid' : 'Pending',
+                    // BUT for now let's just say Pending to be safe, staff can update.
+                    status: 'Pending',
+                    payment_date: new Date().toISOString()
+                },
+                token
+            });
+            if (payError) console.error("Payment creation failed:", payError);
+
+            // 6. Log Action
+            await rawMutate('reservationlog', 'POST', {
+                body: {
+                    reservation_id: newRes.reservation_id,
+                    staff_id: data.staffId,
+                    action: 'Walk-in Booking',
+                    previous_status: 'None',
+                    new_status: 'Booked',
+                },
+                token
+            });
+
+            toast.success("Walk-in Reservation Created!");
+            refreshData();
+
+        } catch (error: any) {
+            console.error("Error creating walk-in reservation:", error);
+            toast.error(error.message || "Failed to create reservation");
+            throw error;
+        }
+    };
+
     const updateStatus = async (id: number, status: Reservation['Status']) => {
         const targetRes = reservations.find(r => r.Reservation_ID === id);
         const previousStatus = targetRes?.Status;
@@ -483,7 +622,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             .filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn' || r.Status === 'CheckedOut')
             .reduce((sum, r) => sum + r.Total_Amount, 0),
         activeReservations: reservations.filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn').length,
-        availableRooms: rooms.length - reservations.filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn').length,
+        availableRooms: rooms.filter(r => r.Status !== 'Maintenance').length - reservations.filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn').length,
         averageStay: reservations.length > 0
             ? reservations.reduce((sum, r) => {
                 const start = new Date(r.Check_In).getTime();
@@ -505,7 +644,8 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             resetData,
             updateRoomStatus,
             checkAvailability,
-            refreshData
+            refreshData,
+            addWalkInReservation
         }}>
             {children}
         </ReservationContext.Provider>

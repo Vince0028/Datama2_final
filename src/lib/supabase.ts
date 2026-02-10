@@ -32,6 +32,14 @@ export async function rawQuery<T = any>(
     try {
         const token = options?.token || _cachedToken || supabaseAnonKey;
 
+        // Validate inputs
+        if (!supabaseUrl || !table) {
+            throw new Error('Invalid URL or table name');
+        }
+        if (!token || typeof token !== 'string') {
+            throw new Error('Invalid auth token');
+        }
+
         const select = options?.select || '*';
         let url = `${supabaseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
         if (options?.filters) url += `&${options.filters}`;

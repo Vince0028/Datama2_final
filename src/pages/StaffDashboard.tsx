@@ -1,4 +1,4 @@
-import { DollarSign, Calendar, Bed, Clock, TrendingUp, CreditCard, Banknote, Globe } from 'lucide-react';
+import { DollarSign, Calendar, Bed, Clock, TrendingUp, CreditCard, Banknote, Globe, Smartphone } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -6,7 +6,7 @@ import { useReservations } from '@/context/ReservationContext';
 import { useAuth } from '@/context/AuthContext';
 
 export default function StaffDashboard() {
-    const { metrics, reservations, resetData } = useReservations();
+    const { metrics, reservations, paymentBreakdown, resetData } = useReservations();
     const { user } = useAuth();
 
     // Get recent reservations
@@ -14,10 +14,10 @@ export default function StaffDashboard() {
         .slice(-5)
         .reverse();
 
-    const revenueByMethod = [
-        { method: 'Card', amount: metrics.totalRevenue * 0.94 },
-        { method: 'Cash', amount: metrics.totalRevenue * 0.06 }
-    ];
+    // Use real payment data from context (safely handle undefined)
+    const revenueByMethod = paymentBreakdown && paymentBreakdown.length > 0
+        ? paymentBreakdown
+        : [{ method: 'No payments yet', amount: 0 }];
 
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
@@ -26,6 +26,8 @@ export default function StaffDashboard() {
         Card: CreditCard,
         Cash: Banknote,
         Online: Globe,
+        GCash: Smartphone,
+        PayPal: Globe,
     };
 
     return (
@@ -135,7 +137,7 @@ export default function StaffDashboard() {
                         {revenueByMethod.map((item, index) => {
                             const Icon = methodIcons[item.method] || CreditCard;
                             const total = revenueByMethod.reduce((sum, i) => sum + i.amount, 0);
-                            const percentage = Math.round((item.amount / total) * 100);
+                            const percentage = total > 0 ? Math.round((item.amount / total) * 100) : 0;
 
                             return (
                                 <div

@@ -15,6 +15,7 @@ interface Booking {
   check_out: string;
   status: string;
   total_amount: number;
+  payment_method: string | null;
   room: {
     room_number: string;
     roomtype: {
@@ -63,16 +64,22 @@ export default function GuestBookings() {
 
         if (resError) throw resError;
 
-        // Get rooms and room types
+        // Get rooms, room types, and payments
         const { data: rooms } = await rawQuery('room', { token });
         const { data: roomTypes } = await rawQuery('roomtype', { token });
+        const { data: paymentsData } = await rawQuery('payment', {
+          filters: `reservation_id=in.(${reservationIds.join(',')})`,
+          token,
+        });
 
         // Join the data
         const enrichedBookings = (reservations || []).map((res: any) => {
           const room = rooms?.find((r: any) => r.room_id === res.room_id);
           const roomType = room ? roomTypes?.find((rt: any) => rt.roomtype_id === room.roomtype_id) : null;
+          const payment = paymentsData?.find((p: any) => p.reservation_id === res.reservation_id);
           return {
             ...res,
+            payment_method: payment?.method || null,
             room: {
               room_number: room?.room_number || 'N/A',
               roomtype: {
@@ -159,7 +166,7 @@ export default function GuestBookings() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-3 gap-4 text-sm">
+                <div className="grid sm:grid-cols-4 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -181,6 +188,15 @@ export default function GuestBookings() {
                       <p className="font-medium">₱{booking.total_amount.toLocaleString()}</p>
                     </div>
                   </div>
+                  {booking.payment_method && (
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-muted-foreground">Payment</p>
+                        <p className="font-medium">{booking.payment_method}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

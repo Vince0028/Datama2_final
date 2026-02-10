@@ -76,8 +76,14 @@ CREATE POLICY "Guests can update own data" ON Guest
     FOR UPDATE USING (auth.jwt()->>'email' = email);
 
 -- Staff can view all guests (for the Guests management page)
+-- Staff can view all guests (for the Guests management page)
 CREATE POLICY "Staff can view all guests" ON Guest
     FOR SELECT USING (auth.jwt()->>'email' IN (SELECT email FROM Staff));
+
+-- Staff can insert new guests (for walk-ins)
+CREATE POLICY "Staff can insert guests" ON Guest
+    FOR INSERT TO authenticated
+    WITH CHECK (auth.jwt()->>'email' IN (SELECT email FROM Staff));
 
 
 -- ─────────────────────────────────────────────────────────────────────────
