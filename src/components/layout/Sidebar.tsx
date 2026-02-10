@@ -64,8 +64,8 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-          <Hotel className="h-6 w-6 text-sidebar-primary-foreground" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary/10 overflow-hidden">
+          <img src="/website_logo.png" alt="Logo" className="h-full w-full object-contain" />
         </div>
         {!collapsed && (
           <div className="animate-fade-in">

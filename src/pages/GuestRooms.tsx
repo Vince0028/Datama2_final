@@ -8,18 +8,58 @@ import { useReservations } from '@/context/ReservationContext';
 
 
 // Helper to get image based on room type
-const getRoomImage = (type: string) => {
-    switch (type) {
-        case 'Suite':
-        case 'Executive':
-            return "https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1074&q=80";
-        case 'Deluxe':
-            return "https://images.unsplash.com/photo-1590490360182-c33d57733427?ixlib=rb-4.0.3&auto=format&fit=crop&w=1474&q=80";
-        case 'Family':
-            return "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80";
-        default: // Standard, Single, etc.
-            return "https://images.unsplash.com/photo-1611892440504-42a792e24d32?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80";
-    }
+// Image pools for different room types
+const roomImages: Record<string, string[]> = {
+    'Suite': [
+        "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1591088398332-8a7791972843?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1631049307264-da0f29722e04?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"  // Bedroom
+    ],
+    'Executive': [
+        "https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1074&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1618773928121-c32242e63f39?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1590490360182-c33d57733427?ixlib=rb-4.0.3&auto=format&fit=crop&w=1474&q=80"  // Bedroom
+    ],
+    'Deluxe': [
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1512918760530-772713840870?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1611892440504-42a792e24d32?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"  // Bedroom
+    ],
+    'Family': [
+        "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1074&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1576675784201-0e142b423d6a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"  // Bedroom
+    ],
+    'Standard': [
+        "https://images.unsplash.com/photo-1631049307264-da0f29722e04?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1590490360182-c33d57733427?ixlib=rb-4.0.3&auto=format&fit=crop&w=1474&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Bedroom
+        "https://images.unsplash.com/photo-1618773928121-c32242e63f39?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"  // Bedroom
+    ],
+    'Economy': [
+        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Cozy bedroom
+        "https://images.unsplash.com/photo-1631049307264-da0f29722e04?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"  // Simple bedroom
+    ],
+    'Double': [
+        "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Double Beds
+        "https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Modern Bedroom
+        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"  // Cozy Room
+    ],
+    'Single': [
+        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80", // Cozy small bedroom
+        "https://images.unsplash.com/photo-1618773928121-c32242e63f39?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"  // Simple hotel room
+    ]
+};
+
+const getRoomImage = (type: string, roomId: number) => {
+    // Default to Standard pool if type not found
+    const pool = roomImages[type] || roomImages['Standard'];
+    // Deterministic selection based on room ID
+    // Using a prime multiplier to reduce pattern visibility for sequential IDs
+    const index = (roomId * 7) % pool.length;
+    return pool[index];
 };
 
 const getRoomCapacity = (type: string) => {
@@ -48,7 +88,7 @@ export default function GuestRooms() {
             ...room,
             typeName: type?.Type_Name || 'Standard',
             price: type?.Base_Rate || 0,
-            image: getRoomImage(type?.Type_Name || ''),
+            image: getRoomImage(type?.Type_Name || '', room.Room_ID),
             capacity: getRoomCapacity(type?.Type_Name || ''),
             isBookable: isAvailable && room.Status !== 'Maintenance'
         };
