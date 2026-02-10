@@ -74,7 +74,8 @@ CREATE TABLE Guest (
     Address     VARCHAR(255),
     City        VARCHAR(100),
     Postal_Code VARCHAR(20),
-    Created_At  TIMESTAMPTZ DEFAULT NOW()
+    Created_At  TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT email_format CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
 
@@ -89,7 +90,9 @@ CREATE TABLE RoomType (
     Type_Name     VARCHAR(50)   NOT NULL UNIQUE,
     Base_Rate     DECIMAL(10,2) NOT NULL,
     Description   TEXT,
-    Max_Occupancy INT DEFAULT 2
+    Max_Occupancy INT DEFAULT 2,
+    CONSTRAINT positive_rate CHECK (Base_Rate > 0),
+    CONSTRAINT positive_occupancy CHECK (Max_Occupancy > 0)
 );
 
 
@@ -105,7 +108,7 @@ CREATE TABLE Room (
     RoomType_ID INT         NOT NULL,
     Status      VARCHAR(20) NOT NULL DEFAULT 'Available',
     Floor       INT,
-    Image_URL   TEXT,
+    CONSTRAINT positive_floor CHECK (Floor > 0),
     FOREIGN KEY (RoomType_ID) REFERENCES RoomType(RoomType_ID)
 );
 
@@ -145,8 +148,8 @@ CREATE TABLE Reservation (
     Check_Out      DATE           NOT NULL,
     Status         VARCHAR(20)    NOT NULL DEFAULT 'Pending',
     Total_Amount   DECIMAL(10,2)  NOT NULL,
-    Notes          TEXT,
     Created_At     TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT positive_total CHECK (Total_Amount >= 0),
     FOREIGN KEY (Room_ID)  REFERENCES Room(Room_ID),
     FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID),
     CONSTRAINT valid_dates CHECK (Check_Out > Check_In),
@@ -183,6 +186,7 @@ CREATE TABLE Payment (
     Reservation_ID        INT            NOT NULL,
     Amount                DECIMAL(10,2)  NOT NULL,
     Payment_Date          TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT positive_payment CHECK (Amount > 0),
     Method                VARCHAR(20)    NOT NULL,
     Status                VARCHAR(20)    NOT NULL DEFAULT 'Pending',
     Transaction_Reference VARCHAR(100),
@@ -204,7 +208,6 @@ CREATE TABLE ReservationLog (
     Action         VARCHAR(50)  NOT NULL,  -- e.g., 'Approved', 'Rejected', 'CheckedIn', 'CheckedOut'
     Previous_Status VARCHAR(20),
     New_Status     VARCHAR(20)  NOT NULL,
-    Notes          TEXT,
     Created_At     TIMESTAMPTZ  DEFAULT NOW(),
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
     FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID)
