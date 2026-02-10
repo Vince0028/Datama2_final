@@ -98,6 +98,7 @@ export default function Reservations() {
               <TableHead className="font-semibold">Room</TableHead>
               <TableHead className="font-semibold">Dates</TableHead>
               <TableHead className="font-semibold">Staff</TableHead>
+              <TableHead className="font-semibold">Payment</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="text-right font-semibold">Actions</TableHead>
             </TableRow>
@@ -137,6 +138,11 @@ export default function Reservations() {
                         <Clock className="h-3 w-3" /> Unassigned
                       </span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium">
+                      {reservation.payment?.Method || 'N/A'}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={reservation.Status} />

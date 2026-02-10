@@ -21,24 +21,34 @@ export function RoomScheduleDialog({ roomId, roomName }: RoomScheduleDialogProps
     const { reservations } = useReservations();
     const [date, setDate] = useState<Date | undefined>(new Date());
 
-    // Calculate disabled dates (booked dates)
-    const bookedDays = useMemo(() => {
-        const days: Date[] = [];
+    // Calculate booked/checked-in days (red) and pending days (yellow)
+    const { bookedDays, pendingDays } = useMemo(() => {
+        const booked: Date[] = [];
+        const pending: Date[] = [];
 
         reservations.forEach(res => {
-            if (res.Room_ID === roomId && (res.Status === 'Booked' || res.Status === 'CheckedIn')) {
-                let current = new Date(res.Check_In);
-                const end = new Date(res.Check_Out);
+            if (res.Room_ID !== roomId) return;
+            if (res.Status === 'Cancelled' || res.Status === 'CheckedOut') return;
 
-                // Add all days from check-in to check-out (exclusive of checkout day usually, but let's be safe)
-                while (current < end) {
-                    days.push(new Date(current));
-                    current.setDate(current.getDate() + 1);
-                }
+            const isActive = res.Status === 'Booked' || res.Status === 'CheckedIn';
+            const isPending = res.Status === 'Pending';
+            if (!isActive && !isPending) return;
+
+            let current = new Date(res.Check_In);
+            current.setHours(0, 0, 0, 0);
+            const end = new Date(res.Check_Out);
+            end.setHours(0, 0, 0, 0);
+
+            while (current < end) {
+                if (isActive) booked.push(new Date(current));
+                else if (isPending) pending.push(new Date(current));
+                current.setDate(current.getDate() + 1);
             }
         });
-        return days;
+        return { bookedDays: booked, pendingDays: pending };
     }, [reservations, roomId]);
+
+    const allDisabled = [...bookedDays, ...pendingDays];
 
     return (
         <Dialog>
@@ -50,9 +60,9 @@ export function RoomScheduleDialog({ roomId, roomName }: RoomScheduleDialogProps
             </DialogTrigger>
             <DialogContent className="w-auto p-0">
                 <DialogHeader className="p-4 pb-0">
-                    <DialogTitle>Availability Schedule</DialogTitle>
+                    <DialogTitle>Room Schedule</DialogTitle>
                     <DialogDescription>
-                        Booked dates for {roomName}.
+                        Booking schedule for {roomName}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="p-4 flex flex-col items-center gap-4">
@@ -60,26 +70,39 @@ export function RoomScheduleDialog({ roomId, roomName }: RoomScheduleDialogProps
                         mode="single"
                         selected={date}
                         onSelect={setDate}
-                        disabled={bookedDays}
-                        modifiers={{ booked: bookedDays }}
+                        disabled={allDisabled}
+                        modifiers={{ booked: bookedDays, pending: pendingDays }}
                         modifiersStyles={{
                             booked: {
-                                backgroundColor: "#ef4444", // red-500
+                                background: "linear-gradient(135deg, #dc2626, #ef4444)",
                                 color: "white",
                                 opacity: 1,
                                 textDecoration: "none",
-                                borderRadius: "4px"
+                                borderRadius: "4px",
+                                fontWeight: "bold"
+                            },
+                            pending: {
+                                background: "linear-gradient(135deg, #d97706, #f59e0b)",
+                                color: "white",
+                                opacity: 1,
+                                textDecoration: "none",
+                                borderRadius: "4px",
+                                fontWeight: "bold"
                             }
                         }}
                         className="rounded-md border shadow"
                     />
                     <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded bg-red-500"></div>
-                            <span>Booked</span>
+                            <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #dc2626, #ef4444)' }}></div>
+                            <span>Booked / Checked In</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded border border-gray-200 bg-transparent"></div>
+                            <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)' }}></div>
+                            <span>Pending</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded border border-gray-200 bg-white"></div>
                             <span>Available</span>
                         </div>
                     </div>

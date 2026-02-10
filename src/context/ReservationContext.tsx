@@ -1,13 +1,31 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import type { Reservation, Guest, Room, RoomType } from '@/types/hotel';
+import type { Reservation, Guest, Room, RoomType, Staff, Payment } from '@/types/hotel';
 import { supabase, rawQuery, rawMutate, getCachedToken } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { toast } from "sonner";
 
+interface PaymentBreakdown {
+    method: string;
+    amount: number;
+}
+
+interface WalkInData {
+    roomId: number;
+    staffId: number;
+    checkIn: string;
+    checkOut: string;
+    guestFirstName: string;
+    guestLastName: string;
+    guestEmail: string;
+    guestPhone: string;
+    paymentMethod: string;
+}
+
 interface ReservationContextType {
     reservations: Reservation[];
     rooms: Room[];
-    addReservation: (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest>, paymentMethod: string }) => Promise<void>;
+    addReservation: (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest>; paymentMethod?: string }) => Promise<void>;
+    addWalkInReservation: (data: WalkInData) => Promise<void>;
     updateStatus: (id: number, status: Reservation['Status']) => Promise<void>;
     metrics: {
         totalRevenue: number;
@@ -15,21 +33,11 @@ interface ReservationContextType {
         availableRooms: number;
         averageStay: number;
     };
+    paymentBreakdown: PaymentBreakdown[];
     resetData: () => void;
     updateRoomStatus: (id: number, status: Room['Status']) => Promise<void>;
     checkAvailability: (roomId: number, checkIn: string, checkOut: string) => boolean;
     refreshData: () => Promise<void>;
-    addWalkInReservation: (data: {
-        roomId: number;
-        staffId: number;
-        checkIn: string;
-        checkOut: string;
-        guestFirstName: string;
-        guestLastName: string;
-        guestEmail: string;
-        guestPhone: string;
-        paymentMethod: string;
-    }) => Promise<void>;
 }
 
 const ReservationContext = createContext<ReservationContextType | undefined>(undefined);
@@ -95,9 +103,7 @@ function mapReservation(r: any): Reservation {
 
 // ── Standalone fetch functions using raw REST (supabase-js hangs) ────────
 async function fetchRoomsFromDB(): Promise<{ rooms: Room[]; roomTypes: any[] }> {
-    // Get fresh token
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
+    const token = getCachedToken();
 
     const [typesRes, roomsRes] = await Promise.all([
         rawQuery('roomtype', { token }),
@@ -112,19 +118,18 @@ async function fetchRoomsFromDB(): Promise<{ rooms: Room[]; roomTypes: any[] }> 
 }
 
 async function fetchReservationsFromDB(): Promise<Reservation[]> {
-    // Get fresh token
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
+    const token = getCachedToken();
 
     // Raw REST doesn't support nested selects like supabase-js,
     // so we fetch each table and join in JS.
-    const [resRes, roomsRes, typesRes, rgRes, guestsRes, staffRes] = await Promise.all([
+    const [resRes, roomsRes, typesRes, rgRes, guestsRes, staffRes, paymentsRes] = await Promise.all([
         rawQuery('reservation', { order: 'created_at.desc', token }),
         rawQuery('room', { token }),
         rawQuery('roomtype', { token }),
         rawQuery('reservationguest', { token }),
         rawQuery('guest', { token }),
         rawQuery('staff', { token }),
+        rawQuery('payment', { token }),
     ]);
 
     const roomsArr = roomsRes.data || [];
@@ -132,6 +137,7 @@ async function fetchReservationsFromDB(): Promise<Reservation[]> {
     const rgArr = rgRes.data || [];
     const guestsArr = guestsRes.data || [];
     const staffArr = staffRes.data || [];
+    const paymentsArr = paymentsRes.data || [];
 
     return (resRes.data || []).map((r: any) => {
         const room = roomsArr.find((rm: any) => rm.room_id === r.room_id);
@@ -162,6 +168,9 @@ async function fetchReservationsFromDB(): Promise<Reservation[]> {
         // Find staff who processed this reservation
         const staff = r.staff_id ? staffArr.find((s: any) => s.staff_id === r.staff_id) : null;
 
+        // Find payment for this reservation
+        const payment = paymentsArr.find((p: any) => p.reservation_id === r.reservation_id);
+
         return {
             Reservation_ID: r.reservation_id,
             Room_ID: r.room_id,
@@ -187,88 +196,177 @@ async function fetchReservationsFromDB(): Promise<Reservation[]> {
                 First_Name: staff.first_name,
                 Last_Name: staff.last_name,
                 Role: staff.role
+            } : undefined,
+            payment: payment ? {
+                Payment_ID: payment.payment_id,
+                Reservation_ID: payment.reservation_id,
+                Amount: payment.amount,
+                Method: payment.method,
+                Status: payment.status
             } : undefined
         };
     });
+}
+
+async function fetchPaymentsFromDB(): Promise<any[]> {
+    const token = getCachedToken();
+    const { data, error } = await rawQuery('payment', { token });
+    if (error) throw new Error('Payments: ' + error.message);
+    return data || [];
 }
 
 export function ReservationProvider({ children }: { children: ReactNode }) {
     const { user, isAuthenticated } = useAuth();
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [rooms, setRooms] = useState<Room[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
     const roomTypesRef = useRef<any[]>([]);
     const mountedRef = useRef(true);
 
-    const refreshData = async () => {
-        try {
-            const { rooms: fetchedRooms, roomTypes } = await fetchRoomsFromDB();
-            if (mountedRef.current) {
-                roomTypesRef.current = roomTypes;
-                setRooms(fetchedRooms);
-            }
-
-            const fetchedReservations = await fetchReservationsFromDB();
-            if (mountedRef.current) {
-                setReservations(fetchedReservations);
-            }
-        } catch (err: any) {
-            console.error('[ReservationContext] Add refresh failed:', err);
-            toast.error('Failed to refresh data: ' + err.message);
-        }
-    };
+    // Keep a ref to user so closures always see the latest value
+    const userRef = useRef(user);
+    useEffect(() => { userRef.current = user; }, [user]);
 
     // Refetch data when user changes (login/logout)
     useEffect(() => {
         mountedRef.current = true;
-        refreshData();
 
-        // Realtime updates - use unique channel names to avoid conflicts
-        const roomChannelName = `rooms-realtime-${Date.now()}`;
-        const resChannelName = `reservations-realtime-${Date.now()}`;
+        // Fetch all data
+        fetchRoomsFromDB()
+            .then(({ rooms: fetchedRooms, roomTypes }) => {
+                if (!mountedRef.current) return;
+                roomTypesRef.current = roomTypes;
+                setRooms(fetchedRooms);
+            })
+            .catch(err => {
+                console.error('[ReservationContext] Room fetch failed:', err);
+                toast.error('Failed to load rooms: ' + err.message);
+            });
 
-        const roomCh = supabase.channel(roomChannelName)
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'room' },
-                (p) => {
-                    if (p.eventType === 'UPDATE') {
-                        setRooms(prev => prev.map(r =>
-                            r.Room_ID === (p.new.room_id || p.new.Room_ID)
-                                ? { ...r, Status: p.new.status || p.new.Status }
-                                : r
-                        ));
-                    }
+        fetchReservationsFromDB()
+            .then(fetched => {
+                if (!mountedRef.current) return;
+                setReservations(fetched);
+            })
+            .catch(err => {
+                console.error('[ReservationContext] Reservation fetch failed:', err);
+            });
+
+        fetchPaymentsFromDB()
+            .then(fetched => {
+                if (!mountedRef.current) return;
+                setPayments(fetched);
+            })
+            .catch(err => {
+                console.error('[ReservationContext] Payment fetch failed:', err);
+            });
+
+        // Realtime updates
+        const roomCh = supabase.channel('rooms-realtime').on('postgres_changes',
+            { event: '*', schema: 'public', table: 'room' },
+            (p) => {
+                if (p.eventType === 'UPDATE') {
+                    setRooms(prev => prev.map(r =>
+                        r.Room_ID === (p.new.room_id || p.new.Room_ID)
+                            ? { ...r, Status: p.new.status || p.new.Status }
+                            : r
+                    ));
                 }
-            )
-            .subscribe();
+            }
+        ).subscribe();
 
-        const resCh = supabase.channel(resChannelName)
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'reservation' },
-                async (p) => {
-                    if (p.eventType === 'UPDATE') {
-                        setReservations(prev => prev.map(res =>
-                            res.Reservation_ID === p.new.reservation_id
-                                ? { ...res, Status: p.new.status, Staff_ID: p.new.staff_id || res.Staff_ID }
-                                : res
-                        ));
-                    } else if (p.eventType === 'INSERT') {
-                        // Refresh all reservations when a new one is added
-                        fetchReservationsFromDB().then(fetched => {
-                            if (mountedRef.current) setReservations(fetched);
+        const resCh = supabase.channel('reservations-realtime').on('postgres_changes',
+            { event: '*', schema: 'public', table: 'reservation' },
+            (p) => {
+                if (p.eventType === 'UPDATE') {
+                    setReservations(prev => prev.map(res =>
+                        res.Reservation_ID === p.new.reservation_id
+                            ? { ...res, Status: p.new.status, Staff_ID: p.new.staff_id || res.Staff_ID }
+                            : res
+                    ));
+                }
+                // When a new reservation is inserted, do a full refresh so
+                // schedules / calendars on ALL clients update automatically.
+                if (p.eventType === 'INSERT') {
+                    fetchReservationsFromDB().then(fetched => {
+                        if (mountedRef.current) setReservations(fetched);
+                    });
+                    fetchPaymentsFromDB().then(fetched => {
+                        if (mountedRef.current) setPayments(fetched);
+                    });
+                }
+            }
+        ).subscribe();
+
+        // ── Auto-checkout: expire reservations past their check-out date ──
+        const runAutoCheckout = async () => {
+            if (!mountedRef.current) return;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const token = getCachedToken();
+            if (!token) return;
+
+            let didChange = false;
+
+            setReservations(prev => {
+                const expired = prev.filter(r => {
+                    if (r.Status !== 'Booked' && r.Status !== 'CheckedIn') return false;
+                    const checkOut = new Date(r.Check_Out);
+                    checkOut.setHours(0, 0, 0, 0);
+                    return checkOut <= today;
+                });
+
+                if (expired.length === 0) return prev;
+                didChange = true;
+
+                // Process expired reservations asynchronously
+                expired.forEach(async (r) => {
+                    try {
+                        await rawMutate('reservation', 'PATCH', {
+                            body: { status: 'CheckedOut' },
+                            filters: `reservation_id=eq.${r.Reservation_ID}`,
+                            token,
                         });
+                        await rawMutate('room', 'PATCH', {
+                            body: { status: 'Available' },
+                            filters: `room_id=eq.${r.Room_ID}`,
+                            token,
+                        });
+                        console.log(`[auto-checkout] Reservation #${r.Reservation_ID} auto checked-out (past ${r.Check_Out})`);
+                    } catch (err) {
+                        console.error('[auto-checkout] Failed:', err);
                     }
-                }
-            )
-            .subscribe();
+                });
+
+                // Update local state
+                const expiredIds = new Set(expired.map(e => e.Reservation_ID));
+                const expiredRoomIds = new Set(expired.map(e => e.Room_ID));
+
+                // Also update rooms to Available
+                setRooms(prevRooms => prevRooms.map(room =>
+                    expiredRoomIds.has(room.Room_ID) ? { ...room, Status: 'Available' as Room['Status'] } : room
+                ));
+
+                return prev.map(r =>
+                    expiredIds.has(r.Reservation_ID) ? { ...r, Status: 'CheckedOut' as Reservation['Status'] } : r
+                );
+            });
+        };
+
+        // Run once on load, then every 60 seconds
+        runAutoCheckout();
+        const autoCheckoutInterval = setInterval(runAutoCheckout, 60000);
 
         return () => {
             mountedRef.current = false;
+            clearInterval(autoCheckoutInterval);
             supabase.removeChannel(roomCh);
             supabase.removeChannel(resCh);
         };
     }, [isAuthenticated, user?.User_Type]);
 
-    const addReservation = async (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest>, paymentMethod: string }) => {
+    // ── GUEST booking (requires logged-in guest) ──
+    const addReservation = async (data: Omit<Reservation, 'Reservation_ID' | 'Total_Amount'> & { guest: Partial<Guest>; paymentMethod?: string }) => {
         try {
             const room = rooms.find(r => r.Room_ID === data.Room_ID);
             const baseRate = room?.roomType?.Base_Rate || 0;
@@ -277,126 +375,49 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
             const totalAmount = baseRate * nights;
 
-            let guestId = user?.Guest_ID;
-            if (!guestId) {
-                throw new Error("User must be logged in to book");
-            }
+            const guestId = user?.Guest_ID;
+            if (!guestId) throw new Error("User must be logged in to book");
 
-            // Get fresh token from Supabase session
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
+            const token = getCachedToken();
+            if (!token) throw new Error("Authentication token missing. Please log in again.");
 
-            console.log('[addReservation] Token exists:', !!token);
-            console.log('[addReservation] Guest ID:', guestId);
-
-            if (!token) {
-                throw new Error("Authentication token missing. Please log in again.");
-            }
-
-            // Insert reservation
             const { data: newRes, error: resError } = await rawMutate('reservation', 'POST', {
-                body: {
-                    room_id: data.Room_ID,
-                    staff_id: data.Staff_ID || null,
-                    check_in: data.Check_In,
-                    check_out: data.Check_Out,
-                    status: data.Status || 'Pending',
-                    total_amount: totalAmount
-                },
-                returnData: true,
-                single: true,
-                token: token,
+                body: { room_id: data.Room_ID, staff_id: null, check_in: data.Check_In, check_out: data.Check_Out, status: 'Pending', total_amount: totalAmount },
+                returnData: true, single: true, token,
             });
             if (resError) throw new Error(resError.message);
 
-            // Insert reservation-guest link
-            const { error: rgError } = await rawMutate('reservationguest', 'POST', {
-                body: {
-                    reservation_id: newRes.reservation_id,
-                    guest_id: guestId,
-                    guest_type: 'Primary'
-                },
-                token: token,
-            });
-            if (rgError) throw new Error(rgError.message);
+            await rawMutate('reservationguest', 'POST', { body: { reservation_id: newRes.reservation_id, guest_id: guestId, guest_type: 'Primary' }, token });
 
-            // Insert Payment record
-            const { error: payError } = await rawMutate('payment', 'POST', {
-                body: {
-                    reservation_id: newRes.reservation_id,
-                    amount: totalAmount,
-                    method: data.paymentMethod,
-                    status: 'Pending',
-                    payment_date: new Date().toISOString()
-                },
-                token: token,
+            console.log('[addReservation] Inserting payment:', { reservation_id: newRes.reservation_id, amount: totalAmount, method: data.paymentMethod || 'Cash', status: 'Pending' });
+            const { data: payData, error: payError } = await rawMutate('payment', 'POST', {
+                body: { reservation_id: newRes.reservation_id, amount: totalAmount, method: data.paymentMethod || 'Cash', status: 'Pending' },
+                returnData: true, single: true, token,
             });
-
             if (payError) {
-                console.error("Payment creation failed:", payError);
-                toast.error("Reservation created but payment record failed.");
+                console.error('[addReservation] Payment insert failed:', payError);
+                toast.error('Reservation created but payment record failed: ' + payError.message);
+            } else {
+                console.log('[addReservation] Payment inserted successfully:', payData);
             }
 
-            toast.success("Reservation Request Sent!", {
-                description: "Staff will review your booking shortly."
-            });
+            // Refresh all data to include the new reservation + payment
+            const updatedReservations = await fetchReservationsFromDB();
+            setReservations(updatedReservations);
+            const updatedPayments = await fetchPaymentsFromDB();
+            setPayments(updatedPayments);
+
+            toast.success("Reservation Request Sent!", { description: "Staff will review your booking shortly." });
         } catch (error: any) {
             console.error("Error adding reservation:", error);
             toast.error(error.message || "Failed to book room");
+            throw error; // Re-throw so the dialog knows it failed
         }
     };
 
-    const addWalkInReservation = async (data: {
-        roomId: number;
-        staffId: number;
-        checkIn: string;
-        checkOut: string;
-        guestFirstName: string;
-        guestLastName: string;
-        guestEmail: string;
-        guestPhone: string;
-        paymentMethod: string;
-    }) => {
+    // ── STAFF walk-in reservation (completely independent, no guest login needed) ──
+    const addWalkInReservation = async (data: WalkInData) => {
         try {
-            // Get fresh token
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            if (!token) throw new Error("Authentication token missing.");
-
-            // 1. Check/Create Guest
-            // customized query to find guest by email
-            const { data: existingGuests, error: searchError } = await rawQuery('guest', {
-                filters: `email=eq.${data.guestEmail}`,
-                token
-            });
-
-            if (searchError) throw new Error("Error checking guest: " + searchError.message);
-
-            let guestId: number;
-
-            if (existingGuests && existingGuests.length > 0) {
-                guestId = existingGuests[0].guest_id || existingGuests[0].Guest_ID;
-            } else {
-                // Create new guest
-                const { data: newGuest, error: createGuestError } = await rawMutate('guest', 'POST', {
-                    body: {
-                        first_name: data.guestFirstName,
-                        last_name: data.guestLastName,
-                        email: data.guestEmail,
-                        phone: data.guestPhone,
-                        address: 'Walk-in', // Default for walk-ins
-                        city: 'Walk-in',
-                        postal_code: '0000',
-                    },
-                    returnData: true,
-                    single: true,
-                    token
-                });
-                if (createGuestError) throw new Error("Error creating guest: " + createGuestError.message);
-                guestId = newGuest.guest_id || newGuest.Guest_ID;
-            }
-
-            // 2. Calculate Total Amount
             const room = rooms.find(r => r.Room_ID === data.roomId);
             const baseRate = room?.roomType?.Base_Rate || 0;
             const checkIn = new Date(data.checkIn);
@@ -404,77 +425,62 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
             const totalAmount = baseRate * nights;
 
-            // 3. Create Reservation (Status = 'Booked' immediately for walk-ins)
+            const token = getCachedToken();
+            if (!token) throw new Error("Authentication token missing. Please log in again.");
+
+            // Find or create guest by email
+            let guestId: number;
+            const { data: existingGuests } = await rawQuery('guest', {
+                filters: `email=eq.${encodeURIComponent(data.guestEmail)}`, token,
+            });
+
+            if (existingGuests && existingGuests.length > 0) {
+                guestId = existingGuests[0].guest_id;
+            } else {
+                const { data: newGuest, error: guestError } = await rawMutate('guest', 'POST', {
+                    body: { first_name: data.guestFirstName, last_name: data.guestLastName, email: data.guestEmail, phone: data.guestPhone, middle_name: '', address: '', city: '', postal_code: '' },
+                    returnData: true, single: true, token,
+                });
+                if (guestError) throw new Error('Failed to create guest: ' + guestError.message);
+                guestId = newGuest.guest_id;
+            }
+
             const { data: newRes, error: resError } = await rawMutate('reservation', 'POST', {
-                body: {
-                    room_id: data.roomId,
-                    staff_id: data.staffId,
-                    check_in: data.checkIn,
-                    check_out: data.checkOut,
-                    status: 'Booked',
-                    total_amount: totalAmount,
-                    notes: 'Walk-in Reservation'
-                },
-                returnData: true,
-                single: true,
-                token
+                body: { room_id: data.roomId, staff_id: data.staffId, check_in: data.checkIn, check_out: data.checkOut, status: 'Pending', total_amount: totalAmount },
+                returnData: true, single: true, token,
             });
-            if (resError) throw new Error("Error creating reservation: " + resError.message);
+            if (resError) throw new Error(resError.message);
 
-            // 4. Link Guest
-            const { error: rgError } = await rawMutate('reservationguest', 'POST', {
-                body: {
-                    reservation_id: newRes.reservation_id,
-                    guest_id: guestId,
-                    guest_type: 'Primary'
-                },
-                token
+            await rawMutate('reservationguest', 'POST', { body: { reservation_id: newRes.reservation_id, guest_id: guestId, guest_type: 'Primary' }, token });
+
+            console.log('[addWalkInReservation] Inserting payment:', { reservation_id: newRes.reservation_id, amount: totalAmount, method: data.paymentMethod || 'Cash', status: 'Pending' });
+            const { data: payData, error: payError } = await rawMutate('payment', 'POST', {
+                body: { reservation_id: newRes.reservation_id, amount: totalAmount, method: data.paymentMethod || 'Cash', status: 'Pending' },
+                returnData: true, single: true, token,
             });
-            if (rgError) throw new Error("Error linking guest: " + rgError.message);
+            if (payError) {
+                console.error('[addWalkInReservation] Payment insert failed:', payError);
+                toast.error('Reservation created but payment record failed: ' + payError.message);
+            } else {
+                console.log('[addWalkInReservation] Payment inserted successfully:', payData);
+            }
 
-            // 5. Create Payment
-            const { error: payError } = await rawMutate('payment', 'POST', {
-                body: {
-                    reservation_id: newRes.reservation_id,
-                    amount: totalAmount,
-                    method: data.paymentMethod,
-                    status: 'Paid', // Assuming walk-ins pay immediately? Or 'Pending' if not. Let's say 'Pending' to be safe or 'Paid' if cash?
-                    // Let's stick with 'Pending' unless paid by cash.
-                    // Actually usually walk-ins pay at desk. Let's assume Pending for now to match other flows, or Paid if Cash?
-                    // For simplicity, let's use 'Pending' and let the staff update it, OR 'Paid' if it's cash.
-                    // Logic:
-                    // status: data.paymentMethod === 'Cash' ? 'Paid' : 'Pending',
-                    // BUT for now let's just say Pending to be safe, staff can update.
-                    status: 'Pending',
-                    payment_date: new Date().toISOString()
-                },
-                token
-            });
-            if (payError) console.error("Payment creation failed:", payError);
+            // Refresh all data to include the new reservation + payment
+            const updatedReservations = await fetchReservationsFromDB();
+            setReservations(updatedReservations);
+            const updatedPayments = await fetchPaymentsFromDB();
+            setPayments(updatedPayments);
 
-            // 6. Log Action
-            await rawMutate('reservationlog', 'POST', {
-                body: {
-                    reservation_id: newRes.reservation_id,
-                    staff_id: data.staffId,
-                    action: 'Walk-in Booking',
-                    previous_status: 'None',
-                    new_status: 'Booked',
-                },
-                token
-            });
-
-            toast.success("Walk-in Reservation Created!");
-            refreshData();
-
+            toast.success("Walk-in Reservation Created!", { description: "Reservation has been created for the guest." });
         } catch (error: any) {
-            console.error("Error creating walk-in reservation:", error);
+            console.error("Error adding walk-in reservation:", error);
             toast.error(error.message || "Failed to create reservation");
-            throw error;
+            throw error; // Re-throw so the dialog knows it failed
         }
     };
 
-    const updateStatus = async (id: number, status: Reservation['Status']) => {
+    const updateStatus = async (id: number, requestedStatus: Reservation['Status']) => {
+        let status = requestedStatus;
         const targetRes = reservations.find(r => r.Reservation_ID === id);
         const previousStatus = targetRes?.Status;
 
@@ -488,10 +494,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
         );
 
         try {
-            // Get fresh token
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-
+            const token = getCachedToken();
             if (!token) {
                 throw new Error("No auth token - please log in again");
             }
@@ -537,8 +540,32 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
 
             if (targetRes) {
                 let newRoomStatus: Room['Status'] | null = null;
+
+                if (status === 'Booked') {
+                    // Auto check-in if check-in date is today or in the past
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const checkInDate = new Date(targetRes.Check_In);
+                    checkInDate.setHours(0, 0, 0, 0);
+
+                    if (checkInDate <= today) {
+                        // Auto-upgrade to CheckedIn and occupy room
+                        await rawMutate('reservation', 'PATCH', {
+                            body: { status: 'CheckedIn' },
+                            filters: `reservation_id=eq.${id}`,
+                            token,
+                        });
+                        // Update local state to reflect CheckedIn
+                        status = 'CheckedIn' as Reservation['Status'];
+                        newRoomStatus = 'Occupied';
+                        console.log('[updateStatus] Auto check-in: check-in date is today or past');
+                    }
+                }
+
                 if (status === 'CheckedIn') newRoomStatus = 'Occupied';
                 else if (status === 'CheckedOut') newRoomStatus = 'Available';
+                else if (status === 'Cancelled') newRoomStatus = 'Available';
+
                 if (newRoomStatus) await updateRoomStatus(targetRes.Room_ID, newRoomStatus);
             }
 
@@ -554,7 +581,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                                 Staff_ID: user.Staff_ID!,
                                 First_Name: user.staffData.First_Name,
                                 Last_Name: user.staffData.Last_Name,
-                                Role: user.staffData.Role as any
+                                Role: user.staffData.Role as Staff['Role']
                             } : res.staff
                         }
                         : res
@@ -591,7 +618,18 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // Full refresh (used by refreshData)
+    const refreshData = async () => {
+        const { rooms: fetchedRooms, roomTypes } = await fetchRoomsFromDB();
+        roomTypesRef.current = roomTypes;
+        setRooms(fetchedRooms);
 
+        const fetched = await fetchReservationsFromDB();
+        setReservations(fetched);
+
+        const fetchedPayments = await fetchPaymentsFromDB();
+        setPayments(fetchedPayments);
+    };
 
     const checkAvailability = (roomId: number, checkIn: string, checkOut: string) => {
         // Client-side check against loaded reservations (efficient for small dataset)
@@ -622,7 +660,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             .filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn' || r.Status === 'CheckedOut')
             .reduce((sum, r) => sum + r.Total_Amount, 0),
         activeReservations: reservations.filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn').length,
-        availableRooms: rooms.filter(r => r.Status !== 'Maintenance').length - reservations.filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn').length,
+        availableRooms: rooms.filter(r => r.Status === 'Available').length,
         averageStay: reservations.length > 0
             ? reservations.reduce((sum, r) => {
                 const start = new Date(r.Check_In).getTime();
@@ -634,19 +672,25 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
             : 0
     };
 
+    // Compute payment breakdown from actual payment records
+    const activeReservationIds = new Set(
+        reservations
+            .filter(r => r.Status === 'Booked' || r.Status === 'CheckedIn' || r.Status === 'CheckedOut')
+            .map(r => r.Reservation_ID)
+    );
+    const relevantPayments = payments.filter(p => activeReservationIds.has(p.reservation_id));
+    const paymentByMethod: Record<string, number> = {};
+    relevantPayments.forEach(p => {
+        const method = p.method || 'Unknown';
+        paymentByMethod[method] = (paymentByMethod[method] || 0) + Number(p.amount || 0);
+    });
+    const paymentBreakdown: PaymentBreakdown[] = Object.entries(paymentByMethod).map(([method, amount]) => ({
+        method,
+        amount
+    }));
+
     return (
-        <ReservationContext.Provider value={{
-            reservations,
-            rooms,
-            addReservation,
-            updateStatus,
-            metrics,
-            resetData,
-            updateRoomStatus,
-            checkAvailability,
-            refreshData,
-            addWalkInReservation
-        }}>
+        <ReservationContext.Provider value={{ reservations, rooms, addReservation, addWalkInReservation, updateStatus, metrics, paymentBreakdown, resetData, updateRoomStatus, checkAvailability, refreshData }}>
             {children}
         </ReservationContext.Provider>
     );

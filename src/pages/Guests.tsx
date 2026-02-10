@@ -152,6 +152,11 @@ export default function Guests() {
                               <p className="text-sm text-muted-foreground">
                                 {reservation.Check_In} to {reservation.Check_Out}
                               </p>
+                              {reservation.payment?.Method && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Paid via {reservation.payment.Method}
+                                </p>
+                              )}
                             </div>
                             <div className="text-right">
                               <p className="font-semibold">{formatCurrency(reservation.Total_Amount)}</p>

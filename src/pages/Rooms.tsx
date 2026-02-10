@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Room } from '@/types/hotel';
+import { RoomScheduleDialog } from '@/components/RoomScheduleDialog';
 
 type FilterStatus = 'All' | 'Available' | 'Occupied' | 'Maintenance';
 type FilterType = 'All' | string;
@@ -167,6 +168,11 @@ export default function Rooms() {
                   <SelectItem value="Maintenance">Maintenance</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Schedule */}
+            <div className="pt-3">
+              <RoomScheduleDialog roomId={room.Room_ID} roomName={`Room ${room.Room_Number} - ${room.roomType?.Type_Name}`} />
             </div>
           </div>
         ))}

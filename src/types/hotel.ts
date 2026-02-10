@@ -46,6 +46,7 @@ export interface Reservation {
   room?: Room;
   staff?: Staff;
   guests?: ReservationGuest[];
+  payment?: Payment;
 }
 
 export interface ReservationGuest {
@@ -61,7 +62,7 @@ export interface Payment {
   Payment_ID: number;
   Reservation_ID: number;
   Amount: number;
-  Method: 'GCash' | 'PayPal' | 'Cash' | 'Card';
+  Method: 'Cash' | 'Card' | 'GCash' | 'PayPal';
   Status: 'Paid' | 'Pending';
 }
 

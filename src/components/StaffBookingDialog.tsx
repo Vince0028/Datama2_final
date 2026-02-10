@@ -262,6 +262,8 @@ export function StaffBookingDialog() {
                             <SelectContent>
                                 <SelectItem value="Cash">Cash</SelectItem>
                                 <SelectItem value="Card">Card</SelectItem>
+                                <SelectItem value="GCash">GCash</SelectItem>
+                                <SelectItem value="PayPal">PayPal</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

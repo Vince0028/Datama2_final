@@ -139,7 +139,11 @@ CREATE POLICY "View own or staff payments" ON Payment
     );
 
 CREATE POLICY "Authenticated can create payments" ON Payment
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+    FOR INSERT TO authenticated
+    WITH CHECK (true);
+
+GRANT SELECT, INSERT ON Payment TO authenticated;
+GRANT SELECT, INSERT ON Payment TO service_role;
 
 
 -- ─────────────────────────────────────────────────────────────────────────

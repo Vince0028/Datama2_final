@@ -175,7 +175,7 @@ CREATE TABLE ReservationGuest (
 -- TABLE 7: Payment
 -- ============================================================================
 -- Tracks payments made for a reservation.
--- Method values: Card, Cash, Online
+-- Method values: Cash, Card, GCash, PayPal
 -- Status values: Pending, Paid, Refunded
 
 CREATE TABLE Payment (
@@ -186,7 +186,8 @@ CREATE TABLE Payment (
     Method                VARCHAR(20)    NOT NULL,
     Status                VARCHAR(20)    NOT NULL DEFAULT 'Pending',
     Transaction_Reference VARCHAR(100),
-    FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE
+    FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
+    CONSTRAINT payment_method_check CHECK (Method IN ('Cash', 'Card', 'GCash', 'PayPal'))
 );
 
 
