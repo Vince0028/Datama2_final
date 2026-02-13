@@ -5,7 +5,7 @@ export interface Guest {
   First_Name: string;
   Middle_Name: string;
   Last_Name: string;
-  Phone: string;
+  Phone: number;
   Email: string;
   Address: string;
   City: string;

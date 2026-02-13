@@ -28,7 +28,7 @@ export default function GuestProfile() {
             setFormData({
                 firstName: user.guestData.First_Name || '',
                 lastName: user.guestData.Last_Name || '',
-                phone: user.guestData.Phone || '',
+                phone: user.guestData.Phone ? String(user.guestData.Phone) : '',
                 address: user.guestData.Address || '',
                 city: user.guestData.City || '',
                 postalCode: user.guestData.Postal_Code || '',
@@ -40,9 +40,9 @@ export default function GuestProfile() {
         let value = e.target.value;
         const name = e.target.name;
 
-        // Phone: allow only digits, spaces, +, and dashes
+        // Phone: allow only digits
         if (name === 'phone') {
-            value = value.replace(/[^0-9+\-\s]/g, '');
+            value = value.replace(/[^0-9]/g, '');
         }
 
         // Names: allow only letters, spaces, hyphens, apostrophes, and dots
@@ -70,8 +70,8 @@ export default function GuestProfile() {
             return;
         }
 
-        if (!/^\+?[0-9][0-9\s\-]{6,19}$/.test(formData.phone.trim())) {
-            setError('Enter a valid phone number (e.g. +63 912 345 6789)');
+        if (!/^(09[0-9]{9}|639[0-9]{9})$/.test(formData.phone.trim())) {
+            setError('Enter a valid PH phone number (e.g. 09123456789 or 639123456789)');
             return;
         }
 
@@ -79,7 +79,7 @@ export default function GuestProfile() {
         const result = await updateGuestProfile({
             First_Name: formData.firstName.trim(),
             Last_Name: formData.lastName.trim(),
-            Phone: formData.phone.trim(),
+            Phone: parseInt(formData.phone.trim(), 10),
             Address: formData.address.trim(),
             City: formData.city.trim(),
             Postal_Code: formData.postalCode.trim(),
@@ -152,7 +152,7 @@ export default function GuestProfile() {
                                 id="phone"
                                 name="phone"
                                 type="tel"
-                                placeholder="+63 XXX XXX XXXX"
+                                placeholder="09123456789"
                                 value={formData.phone}
                                 onChange={handleChange}
                                 required

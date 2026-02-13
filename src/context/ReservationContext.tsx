@@ -17,7 +17,7 @@ interface WalkInData {
     guestFirstName: string;
     guestLastName: string;
     guestEmail: string;
-    guestPhone: string;
+    guestPhone: number;
     guestAddress?: string;
     guestCity?: string;
     guestPostalCode?: string;

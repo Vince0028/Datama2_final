@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     first_name: email.split('@')[0],
                     last_name: '',
                     email: email,
-                    phone: '',
+                    phone: 0,
                     middle_name: '',
                     address: '',
                     city: '',
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         First_Name: newGuest.first_name,
                         Last_Name: newGuest.last_name,
                         Email: email,
-                        Phone: ''
+                        Phone: 0
                     },
                 });
                 return;
@@ -234,7 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 first_name: guestData.First_Name,
                 last_name: guestData.Last_Name,
                 email: email.trim(),
-                phone: guestData.Phone || '',
+                phone: guestData.Phone || 0,
                 middle_name: '',
                 address: guestData.Address || '',
                 city: guestData.City || '',

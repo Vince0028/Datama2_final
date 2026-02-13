@@ -21,7 +21,7 @@ export interface AuthUser {
         First_Name: string;
         Last_Name: string;
         Email: string;
-        Phone?: string;
+        Phone?: number;
         Address?: string;
         City?: string;
         Postal_Code?: string;

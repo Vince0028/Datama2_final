@@ -88,7 +88,7 @@ export function StaffBookingDialog() {
             guestFirstName,
             guestLastName,
             guestEmail: email,
-            guestPhone: phone,
+            guestPhone: parseInt(phone, 10),
             paymentMethod,
         });
 
@@ -101,7 +101,7 @@ export function StaffBookingDialog() {
                 guestFirstName: guestFirstName.trim(),
                 guestLastName: guestLastName.trim(),
                 guestEmail: email.trim(),
-                guestPhone: phone.trim(),
+                guestPhone: parseInt(phone.trim(), 10),
                 guestAddress: address.trim(),
                 guestCity: city.trim(),
                 guestPostalCode: postalCode.trim(),
@@ -186,9 +186,9 @@ export function StaffBookingDialog() {
                             <Input
                                 id="phone"
                                 required
-                                placeholder="0912 345 6789"
+                                placeholder="09123456789"
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value.replace(/[^0-9+\-\s]/g, ''))}
+                                onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                             />
                         </div>
                     </div>

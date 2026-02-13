@@ -69,7 +69,7 @@ CREATE TABLE Guest (
     First_Name  VARCHAR(100) NOT NULL,
     Middle_Name VARCHAR(100),
     Last_Name   VARCHAR(100) NOT NULL,
-    Phone       VARCHAR(20)  NOT NULL,
+    Phone       BIGINT       NOT NULL,
     Email       VARCHAR(100) NOT NULL UNIQUE,
     Address     VARCHAR(255),
     City        VARCHAR(100),
@@ -78,8 +78,10 @@ CREATE TABLE Guest (
     CONSTRAINT email_format      CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
     CONSTRAINT guest_fname_not_empty CHECK (TRIM(First_Name) <> ''),
     CONSTRAINT guest_lname_not_empty CHECK (TRIM(Last_Name) <> ''),
-    CONSTRAINT guest_phone_not_empty CHECK (TRIM(Phone) <> ''),
-    CONSTRAINT guest_phone_format    CHECK (Phone ~ '^[+]?[0-9][0-9\s\-]{6,19}$'),
+    CONSTRAINT guest_phone_positive  CHECK (
+        (Phone >= 9000000000 AND Phone <= 9999999999)         -- local:  09XX XXX XXXX (stored without leading 0)
+        OR (Phone >= 639000000000 AND Phone <= 639999999999)  -- intl:   63 9XX XXX XXXX
+    ),
     CONSTRAINT guest_name_alpha      CHECK (
         First_Name ~* '^[A-Za-z\s\-\''.]+$'
         AND Last_Name ~* '^[A-Za-z\s\-\''.]+$'
@@ -127,7 +129,7 @@ CREATE TABLE Room (
 -- TABLE 4: Staff
 -- ============================================================================
 -- Hotel employees who process reservations.
--- Role values: Manager, Housekeeping, Accountant, FrontDesk, Concierge, ReservationAgent
+-- Role values: Manager, Housekeeping, Accountant, ReservationAgent
 -- Shift values: Day, Night, Rotating
 
 CREATE TABLE Staff (
@@ -245,3 +247,6 @@ CREATE INDEX idx_reservation_status ON Reservation(Status);
 CREATE INDEX idx_room_status        ON Room(Status);
 CREATE INDEX idx_guest_email        ON Guest(Email);
 CREATE INDEX idx_reservation_log    ON ReservationLog(Reservation_ID);
+CREATE INDEX idx_payment_res        ON Payment(Reservation_ID);
+CREATE INDEX idx_resguest_res       ON ReservationGuest(Reservation_ID);
+CREATE INDEX idx_staff_status       ON Staff(Status);

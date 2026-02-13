@@ -24,12 +24,16 @@ CREATE TABLE Guest (
     First_Name  VARCHAR(100) NOT NULL,
     Middle_Name VARCHAR(100),
     Last_Name   VARCHAR(100) NOT NULL,
-    Phone       VARCHAR(20)  NOT NULL,
+    Phone       BIGINT       NOT NULL,
     Email       VARCHAR(100) NOT NULL UNIQUE,
     Address     VARCHAR(255),
     City        VARCHAR(100),
     Postal_Code VARCHAR(20),
-    Created_At  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    Created_At  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT guest_phone_check CHECK (
+        (Phone >= 9000000000 AND Phone <= 9999999999)
+        OR (Phone >= 639000000000 AND Phone <= 639999999999)
+    )
 );
 
 -- ============================================================================
@@ -53,8 +57,9 @@ CREATE TABLE Room (
     Room_Number VARCHAR(10) NOT NULL UNIQUE,
     RoomType_ID INT         NOT NULL,
     Status      VARCHAR(20) NOT NULL DEFAULT 'Available',
-    Floor       INT,
+    Floor       INT         NOT NULL,
     CHECK (Floor > 0),
+    CONSTRAINT room_status_check CHECK (Status IN ('Available', 'Occupied', 'Maintenance')),
     FOREIGN KEY (RoomType_ID) REFERENCES RoomType(RoomType_ID)
 );
 
@@ -67,10 +72,13 @@ CREATE TABLE Staff (
     Last_Name  VARCHAR(100) NOT NULL,
     Email      VARCHAR(100) NOT NULL UNIQUE,
     Role       VARCHAR(50)  NOT NULL,
-    Shift      VARCHAR(50)  DEFAULT 'Day',
+    Shift      VARCHAR(50)  NOT NULL DEFAULT 'Day',
     Hire_Date  DATE DEFAULT (CURRENT_DATE),
-    Status     VARCHAR(20)  DEFAULT 'Active',
-    CHECK (Role IN ('Manager', 'Housekeeping', 'Accountant', 'FrontDesk', 'Concierge', 'ReservationAgent'))
+    Status     VARCHAR(20)  NOT NULL DEFAULT 'Active',
+    Is_Owner   BOOLEAN      NOT NULL DEFAULT FALSE,
+    CONSTRAINT staff_role_check   CHECK (Role IN ('Manager', 'Housekeeping', 'Accountant', 'ReservationAgent')),
+    CONSTRAINT staff_shift_check  CHECK (Shift IN ('Day', 'Night', 'Rotating')),
+    CONSTRAINT staff_status_check CHECK (Status IN ('Active', 'Inactive', 'OnLeave'))
 );
 
 -- ============================================================================
@@ -102,7 +110,8 @@ CREATE TABLE ReservationGuest (
     Guest_Type     VARCHAR(20) NOT NULL DEFAULT 'Primary',
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
     FOREIGN KEY (Guest_ID)       REFERENCES Guest(Guest_ID),
-    UNIQUE (Reservation_ID, Guest_ID)
+    UNIQUE (Reservation_ID, Guest_ID),
+    CONSTRAINT guest_type_check CHECK (Guest_Type IN ('Primary', 'Additional'))
 );
 
 -- ============================================================================
@@ -118,7 +127,8 @@ CREATE TABLE Payment (
     Status                VARCHAR(20)    NOT NULL DEFAULT 'Pending',
     Transaction_Reference VARCHAR(100),
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
-    CONSTRAINT payment_method_check CHECK (Method IN ('Cash', 'Card', 'GCash', 'PayPal'))
+    CONSTRAINT payment_method_check CHECK (Method IN ('Cash', 'Card', 'GCash', 'PayPal')),
+    CONSTRAINT payment_status_check CHECK (Status IN ('Pending', 'Paid', 'Refunded'))
 );
 
 -- ============================================================================
@@ -133,7 +143,10 @@ CREATE TABLE ReservationLog (
     New_Status     VARCHAR(20)  NOT NULL,
     Created_At     TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
-    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID)
+    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID),
+    CONSTRAINT log_action_check      CHECK (Action IN ('Approved', 'Rejected', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    CONSTRAINT log_prev_status_check CHECK (Previous_Status IS NULL OR Previous_Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    CONSTRAINT log_new_status_check  CHECK (New_Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled'))
 );
 
 -- Re-enable foreign key checks
