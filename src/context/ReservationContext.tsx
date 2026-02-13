@@ -20,7 +20,7 @@ interface WalkInData {
     guestPhone: number;
     guestAddress?: string;
     guestCity?: string;
-    guestPostalCode?: string;
+    guestPostalCode?: number;
     paymentMethod: string;
 }
 
@@ -441,7 +441,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 guestId = existingGuests[0].guest_id;
             } else {
                 const { data: newGuest, error: guestError } = await rawMutate('guest', 'POST', {
-                    body: { first_name: data.guestFirstName, last_name: data.guestLastName, email: data.guestEmail, phone: data.guestPhone, middle_name: '', address: data.guestAddress || '', city: data.guestCity || '', postal_code: data.guestPostalCode || '' },
+                    body: { first_name: data.guestFirstName, last_name: data.guestLastName, email: data.guestEmail, phone: data.guestPhone, middle_name: '', address: data.guestAddress || '', city: data.guestCity || '', postal_code: data.guestPostalCode || null },
                     returnData: true, single: true, token,
                 });
                 if (guestError) throw new Error('Failed to create guest: ' + guestError.message);

@@ -25,6 +25,8 @@ export default function GuestSignup() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
 
+    const LIMITS = { firstName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
         const name = e.target.name;
@@ -34,8 +36,8 @@ export default function GuestSignup() {
             value = value.replace(/\s/g, '');
         }
 
-        // Phone: allow only digits
-        if (name === 'phone') {
+        // Phone & postal code: allow only digits
+        if (name === 'phone' || name === 'postalCode') {
             value = value.replace(/[^0-9]/g, '');
         }
 
@@ -44,8 +46,20 @@ export default function GuestSignup() {
             value = value.replace(/[^A-Za-z\s\-''.]/g, '');
         }
 
+        // Enforce max length
+        const limit = LIMITS[name as keyof typeof LIMITS];
+        if (limit && value.length > limit) value = value.slice(0, limit);
+
         setFormData(prev => ({ ...prev, [name]: value }));
         setError('');
+    };
+
+    const charHint = (field: keyof typeof LIMITS, value: string) => {
+        const limit = LIMITS[field];
+        const remaining = limit - value.length;
+        if (remaining <= Math.ceil(limit * 0.2) && remaining > 0) return <p className="text-xs text-amber-500 mt-0.5">{remaining} characters left</p>;
+        if (remaining <= 0) return <p className="text-xs text-destructive mt-0.5">Character limit reached</p>;
+        return null;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -79,13 +93,18 @@ export default function GuestSignup() {
             return;
         }
 
+        if (formData.postalCode.trim() && !/^[1-9][0-9]{3}$/.test(formData.postalCode.trim())) {
+            setError('Postal code must be 4 digits (1000–9999)');
+            return;
+        }
+
         const success = await signup(formData.email.trim(), formData.password, {
             First_Name: formData.firstName.trim(),
             Last_Name: formData.lastName.trim(),
             Phone: parseInt(formData.phone.trim(), 10),
             Address: formData.address.trim(),
             City: formData.city.trim(),
-            Postal_Code: formData.postalCode.trim(),
+            Postal_Code: formData.postalCode.trim() ? parseInt(formData.postalCode.trim(), 10) : undefined,
         });
 
         if (success) {
@@ -118,10 +137,12 @@ export default function GuestSignup() {
                                     id="firstName"
                                     name="firstName"
                                     placeholder="John"
+                                    maxLength={LIMITS.firstName}
                                     value={formData.firstName}
                                     onChange={handleChange}
                                     required
                                 />
+                                {charHint('firstName', formData.firstName)}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lastName">Last Name</Label>
@@ -129,10 +150,12 @@ export default function GuestSignup() {
                                     id="lastName"
                                     name="lastName"
                                     placeholder="Doe"
+                                    maxLength={LIMITS.lastName}
                                     value={formData.lastName}
                                     onChange={handleChange}
                                     required
                                 />
+                                {charHint('lastName', formData.lastName)}
                             </div>
                         </div>
 
@@ -143,10 +166,12 @@ export default function GuestSignup() {
                                 name="email"
                                 type="email"
                                 placeholder="your@email.com"
+                                maxLength={LIMITS.email}
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
                             />
+                            {charHint('email', formData.email)}
                         </div>
 
                         <div className="space-y-2">
@@ -156,6 +181,7 @@ export default function GuestSignup() {
                                 name="phone"
                                 type="tel"
                                 placeholder="09123456789"
+                                maxLength={LIMITS.phone}
                                 value={formData.phone}
                                 onChange={handleChange}
                                 required
@@ -168,9 +194,11 @@ export default function GuestSignup() {
                                 id="address"
                                 name="address"
                                 placeholder="123 Main Street"
+                                maxLength={LIMITS.address}
                                 value={formData.address}
                                 onChange={handleChange}
                             />
+                            {charHint('address', formData.address)}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -180,9 +208,11 @@ export default function GuestSignup() {
                                     id="city"
                                     name="city"
                                     placeholder="Manila"
+                                    maxLength={LIMITS.city}
                                     value={formData.city}
                                     onChange={handleChange}
                                 />
+                                {charHint('city', formData.city)}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="postalCode">Postal Code</Label>
@@ -190,9 +220,13 @@ export default function GuestSignup() {
                                     id="postalCode"
                                     name="postalCode"
                                     placeholder="1000"
+                                    maxLength={LIMITS.postalCode}
                                     value={formData.postalCode}
                                     onChange={handleChange}
                                 />
+                                {formData.postalCode && !/^[1-9][0-9]{3}$/.test(formData.postalCode) && (
+                                    <p className="text-xs text-amber-500 mt-0.5">Must be 4 digits (1000–9999)</p>
+                                )}
                             </div>
                         </div>
 

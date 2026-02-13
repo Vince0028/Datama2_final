@@ -73,7 +73,7 @@ CREATE TABLE Guest (
     Email       VARCHAR(100) NOT NULL UNIQUE,
     Address     VARCHAR(255),
     City        VARCHAR(100),
-    Postal_Code VARCHAR(20),
+    Postal_Code INT,
     Created_At  TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT email_format      CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
     CONSTRAINT guest_fname_not_empty CHECK (TRIM(First_Name) <> ''),
@@ -134,8 +134,8 @@ CREATE TABLE Room (
 
 CREATE TABLE Staff (
     Staff_ID   SERIAL PRIMARY KEY,
-    First_Name VARCHAR(100) NOT NULL,
-    Last_Name  VARCHAR(100) NOT NULL,
+    First_Name VARCHAR(50)  NOT NULL,
+    Last_Name  VARCHAR(50)  NOT NULL,
     Email      VARCHAR(100) NOT NULL UNIQUE,
     Role       VARCHAR(50)  NOT NULL,
     Shift      VARCHAR(50)  NOT NULL DEFAULT 'Day',

@@ -24,7 +24,7 @@ export interface AuthUser {
         Phone?: number;
         Address?: string;
         City?: string;
-        Postal_Code?: string;
+        Postal_Code?: number | null;
     };
     staffData?: {
         First_Name: string;

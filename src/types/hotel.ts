@@ -9,7 +9,7 @@ export interface Guest {
   Email: string;
   Address: string;
   City: string;
-  Postal_Code: string;
+  Postal_Code: number | null;
 }
 
 export interface RoomType {

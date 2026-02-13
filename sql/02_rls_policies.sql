@@ -160,7 +160,43 @@ GRANT SELECT, INSERT ON Payment TO service_role;
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- STEP 8: ReservationLog — staff can view and insert audit logs
+-- STEP 8: Protect the original Manager (Is_Owner)
+-- ─────────────────────────────────────────────────────────────────────────
+-- A database-level trigger that prevents:
+--   1. Changing the Role, Status, or Is_Owner flag of the owner
+--   2. Anyone granting themselves Is_Owner
+-- This ensures the original Manager can never be demoted or deactivated,
+-- even via direct Supabase REST/API calls.
+
+CREATE OR REPLACE FUNCTION protect_owner_staff()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Block any attempt to modify the owner's protected fields
+    IF OLD.is_owner = TRUE THEN
+        IF NEW.role    IS DISTINCT FROM OLD.role
+        OR NEW.status  IS DISTINCT FROM OLD.status
+        OR NEW.is_owner IS DISTINCT FROM OLD.is_owner THEN
+            RAISE EXCEPTION 'Cannot modify the role, status, or ownership of the original Manager.';
+        END IF;
+    END IF;
+
+    -- Block anyone from granting themselves (or others) Is_Owner
+    IF NEW.is_owner = TRUE AND OLD.is_owner = FALSE THEN
+        RAISE EXCEPTION 'Cannot assign owner privileges to another staff member.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_protect_owner
+    BEFORE UPDATE ON Staff
+    FOR EACH ROW
+    EXECUTE FUNCTION protect_owner_staff();
+
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- STEP 9: ReservationLog — staff can view and insert audit logs
 -- ─────────────────────────────────────────────────────────────────────────
 
 CREATE POLICY "Staff can view reservation logs" ON ReservationLog
@@ -173,7 +209,7 @@ CREATE POLICY "Staff can insert reservation logs" ON ReservationLog
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- STEP 9: Enable Supabase Realtime on key tables
+-- STEP 10: Enable Supabase Realtime on key tables
 -- ─────────────────────────────────────────────────────────────────────────
 -- This lets the front-end receive live updates when room status
 -- or reservation status changes (no page refresh needed).

@@ -21,18 +21,21 @@ DROP TABLE IF EXISTS Guest;
 -- ============================================================================
 CREATE TABLE Guest (
     Guest_ID    INT AUTO_INCREMENT PRIMARY KEY,
-    First_Name  VARCHAR(100) NOT NULL,
-    Middle_Name VARCHAR(100),
-    Last_Name   VARCHAR(100) NOT NULL,
+    First_Name  VARCHAR(50)  NOT NULL,
+    Middle_Name VARCHAR(50),
+    Last_Name   VARCHAR(50)  NOT NULL,
     Phone       BIGINT       NOT NULL,
     Email       VARCHAR(100) NOT NULL UNIQUE,
-    Address     VARCHAR(255),
-    City        VARCHAR(100),
-    Postal_Code VARCHAR(20),
+    Address     VARCHAR(150),
+    City        VARCHAR(50),
+    Postal_Code INT,
     Created_At  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT guest_phone_check CHECK (
         (Phone >= 9000000000 AND Phone <= 9999999999)
         OR (Phone >= 639000000000 AND Phone <= 639999999999)
+    ),
+    CONSTRAINT guest_postal_code_range CHECK (
+        Postal_Code IS NULL OR (Postal_Code >= 1000 AND Postal_Code <= 9999)
     )
 );
 
@@ -68,8 +71,8 @@ CREATE TABLE Room (
 -- ============================================================================
 CREATE TABLE Staff (
     Staff_ID   INT AUTO_INCREMENT PRIMARY KEY,
-    First_Name VARCHAR(100) NOT NULL,
-    Last_Name  VARCHAR(100) NOT NULL,
+    First_Name VARCHAR(50)  NOT NULL,
+    Last_Name  VARCHAR(50)  NOT NULL,
     Email      VARCHAR(100) NOT NULL UNIQUE,
     Role       VARCHAR(50)  NOT NULL,
     Shift      VARCHAR(50)  NOT NULL DEFAULT 'Day',

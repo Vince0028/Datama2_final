@@ -45,6 +45,15 @@ export function StaffBookingDialog() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    const LIMITS = { firstName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
+
+    const charHint = (limit: number, value: string) => {
+        const remaining = limit - value.length;
+        if (remaining <= Math.ceil(limit * 0.2) && remaining > 0) return <p className="text-xs text-amber-500 mt-0.5">{remaining} characters left</p>;
+        if (remaining <= 0) return <p className="text-xs text-destructive mt-0.5">Character limit reached</p>;
+        return null;
+    };
+
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
@@ -104,7 +113,7 @@ export function StaffBookingDialog() {
                 guestPhone: parseInt(phone.trim(), 10),
                 guestAddress: address.trim(),
                 guestCity: city.trim(),
-                guestPostalCode: postalCode.trim(),
+                guestPostalCode: postalCode.trim() ? parseInt(postalCode.trim(), 10) : undefined,
                 paymentMethod,
             });
             console.log('[StaffBookingDialog] addWalkInReservation succeeded');
@@ -153,9 +162,11 @@ export function StaffBookingDialog() {
                                 id="firstName"
                                 required
                                 placeholder="Jane"
+                                maxLength={LIMITS.firstName}
                                 value={guestFirstName}
-                                onChange={(e) => setGuestFirstName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, ''))}
+                                onChange={(e) => setGuestFirstName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.firstName))}
                             />
+                            {charHint(LIMITS.firstName, guestFirstName)}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="lastName">Last Name</Label>
@@ -163,9 +174,11 @@ export function StaffBookingDialog() {
                                 id="lastName"
                                 required
                                 placeholder="Doe"
+                                maxLength={LIMITS.lastName}
                                 value={guestLastName}
-                                onChange={(e) => setGuestLastName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, ''))}
+                                onChange={(e) => setGuestLastName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.lastName))}
                             />
+                            {charHint(LIMITS.lastName, guestLastName)}
                         </div>
                     </div>
 
@@ -177,9 +190,11 @@ export function StaffBookingDialog() {
                                 type="email"
                                 required
                                 placeholder="jane@example.com"
+                                maxLength={LIMITS.email}
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value.replace(/\s/g, ''))}
+                                onChange={(e) => setEmail(e.target.value.replace(/\s/g, '').slice(0, LIMITS.email))}
                             />
+                            {charHint(LIMITS.email, email)}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="phone">Phone</Label>
@@ -187,8 +202,9 @@ export function StaffBookingDialog() {
                                 id="phone"
                                 required
                                 placeholder="09123456789"
+                                maxLength={LIMITS.phone}
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                                onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, LIMITS.phone))}
                             />
                         </div>
                     </div>
@@ -198,9 +214,11 @@ export function StaffBookingDialog() {
                         <Input
                             id="address"
                             placeholder="123 Main Street"
+                            maxLength={LIMITS.address}
                             value={address}
-                            onChange={(e) => setAddress(e.target.value)}
+                            onChange={(e) => setAddress(e.target.value.slice(0, LIMITS.address))}
                         />
+                        {charHint(LIMITS.address, address)}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -209,18 +227,24 @@ export function StaffBookingDialog() {
                             <Input
                                 id="city"
                                 placeholder="Manila"
+                                maxLength={LIMITS.city}
                                 value={city}
-                                onChange={(e) => setCity(e.target.value)}
+                                onChange={(e) => setCity(e.target.value.slice(0, LIMITS.city))}
                             />
+                            {charHint(LIMITS.city, city)}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="postalCode">Postal Code</Label>
                             <Input
                                 id="postalCode"
                                 placeholder="1000"
+                                maxLength={LIMITS.postalCode}
                                 value={postalCode}
-                                onChange={(e) => setPostalCode(e.target.value)}
+                                onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, LIMITS.postalCode))}
                             />
+                            {postalCode && !/^[1-9][0-9]{3}$/.test(postalCode) && (
+                                <p className="text-xs text-amber-500 mt-0.5">Must be 4 digits (1000–9999)</p>
+                            )}
                         </div>
                     </div>
 
