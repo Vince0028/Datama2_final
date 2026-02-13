@@ -35,6 +35,9 @@ export function StaffBookingDialog() {
     const [guestLastName, setGuestLastName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
+    const [address, setAddress] = useState("");
+    const [city, setCity] = useState("");
+    const [postalCode, setPostalCode] = useState("");
     const [checkIn, setCheckIn] = useState("");
     const [checkOut, setCheckOut] = useState("");
     const [selectedRoomId, setSelectedRoomId] = useState<string>("");
@@ -95,10 +98,13 @@ export function StaffBookingDialog() {
                 staffId: user?.Staff_ID || 0,
                 checkIn,
                 checkOut,
-                guestFirstName,
-                guestLastName,
-                guestEmail: email,
-                guestPhone: phone,
+                guestFirstName: guestFirstName.trim(),
+                guestLastName: guestLastName.trim(),
+                guestEmail: email.trim(),
+                guestPhone: phone.trim(),
+                guestAddress: address.trim(),
+                guestCity: city.trim(),
+                guestPostalCode: postalCode.trim(),
                 paymentMethod,
             });
             console.log('[StaffBookingDialog] addWalkInReservation succeeded');
@@ -111,6 +117,9 @@ export function StaffBookingDialog() {
             setGuestLastName("");
             setEmail("");
             setPhone("");
+            setAddress("");
+            setCity("");
+            setPostalCode("");
             setSelectedRoomId("");
             setPaymentMethod("Cash");
 
@@ -129,7 +138,7 @@ export function StaffBookingDialog() {
                     New Reservation
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>New Walk-in Reservation</DialogTitle>
                     <DialogDescription>
@@ -145,7 +154,7 @@ export function StaffBookingDialog() {
                                 required
                                 placeholder="Jane"
                                 value={guestFirstName}
-                                onChange={(e) => setGuestFirstName(e.target.value)}
+                                onChange={(e) => setGuestFirstName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, ''))}
                             />
                         </div>
                         <div className="grid gap-2">
@@ -155,7 +164,7 @@ export function StaffBookingDialog() {
                                 required
                                 placeholder="Doe"
                                 value={guestLastName}
-                                onChange={(e) => setGuestLastName(e.target.value)}
+                                onChange={(e) => setGuestLastName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, ''))}
                             />
                         </div>
                     </div>
@@ -169,7 +178,7 @@ export function StaffBookingDialog() {
                                 required
                                 placeholder="jane@example.com"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => setEmail(e.target.value.replace(/\s/g, ''))}
                             />
                         </div>
                         <div className="grid gap-2">
@@ -179,7 +188,38 @@ export function StaffBookingDialog() {
                                 required
                                 placeholder="0912 345 6789"
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
+                                onChange={(e) => setPhone(e.target.value.replace(/[^0-9+\-\s]/g, ''))}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input
+                            id="address"
+                            placeholder="123 Main Street"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="city">City</Label>
+                            <Input
+                                id="city"
+                                placeholder="Manila"
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="postalCode">Postal Code</Label>
+                            <Input
+                                id="postalCode"
+                                placeholder="1000"
+                                value={postalCode}
+                                onChange={(e) => setPostalCode(e.target.value)}
                             />
                         </div>
                     </div>

@@ -93,6 +93,10 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                                             {user.guestData?.First_Name} {user.guestData?.Last_Name}
                                         </DropdownMenuLabel>
                                         <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => navigate('/guest/profile')}>
+                                            <User className="h-4 w-4 mr-2" />
+                                            My Account
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                                             <LogOut className="h-4 w-4 mr-2" />
                                             Logout

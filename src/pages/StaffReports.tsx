@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, CreditCard, Banknote, Globe, BarChart3 } from 'lucide-react';
+import { Users, CreditCard, Banknote, Globe, BarChart3, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { reservations, getRevenueByMethod, payments } from '@/data/mockData';
 import { rawQuery } from '@/lib/supabase';
@@ -13,13 +13,40 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function StaffReports() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, updateStaff } = useAuth();
   const revenueByMethod = getRevenueByMethod();
+
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [editRole, setEditRole] = useState('');
+  const [editShift, setEditShift] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isManager = user?.staffData?.Role === 'Manager';
 
   // Fetch staff from database
   useEffect(() => {
@@ -39,9 +66,9 @@ export default function StaffReports() {
           Last_Name: s.last_name || s.Last_Name,
           Email: s.email || s.Email,
           Role: s.role || s.Role,
-          Shift: s.shift || s.Shift,
-          Hire_Date: s.hire_date || s.Hire_Date,
-          Status: s.status || s.Status,
+          Shift: s.shift || s.Shift || 'Day',
+          Status: s.status || s.Status || 'Active',
+          Hire_Date: s.hire_date || s.Hire_Date || '',
         }));
         console.log('Mapped staff:', mappedStaff);
         setStaff(mappedStaff);
@@ -78,6 +105,41 @@ export default function StaffReports() {
     Housekeeping: 'bg-green-100 text-green-800',
     Concierge: 'bg-amber-100 text-amber-800',
     Accountant: 'bg-rose-100 text-rose-800',
+    ReservationAgent: 'bg-sky-100 text-sky-800',
+  };
+
+  const statusColors: Record<string, string> = {
+    Active: 'bg-green-100 text-green-800',
+    Inactive: 'bg-gray-100 text-gray-800',
+    OnLeave: 'bg-yellow-100 text-yellow-800',
+  };
+
+  const handleEditStaff = (member: Staff) => {
+    setEditingStaff(member);
+    setEditRole(member.Role);
+    setEditShift(member.Shift || 'Day');
+    setEditStatus(member.Status || 'Active');
+    setEditOpen(true);
+  };
+
+  const handleSaveStaff = async () => {
+    if (!editingStaff) return;
+    setIsSaving(true);
+    const success = await updateStaff(editingStaff.Staff_ID, {
+      role: editRole,
+      shift: editShift,
+      status: editStatus,
+    });
+    if (success) {
+      // Update local state
+      setStaff(prev => prev.map(s =>
+        s.Staff_ID === editingStaff.Staff_ID
+          ? { ...s, Role: editRole as Staff['Role'], Shift: editShift as Staff['Shift'], Status: editStatus as Staff['Status'] }
+          : s
+      ));
+      setEditOpen(false);
+    }
+    setIsSaving(false);
   };
 
   const chartColors = ['#1e3a5f', '#d97706', '#059669'];
@@ -115,19 +177,22 @@ export default function StaffReports() {
               <TableRow className="bg-muted/50">
                 <TableHead className="font-semibold">Name</TableHead>
                 <TableHead className="font-semibold">Role</TableHead>
+                <TableHead className="font-semibold">Shift</TableHead>
+                <TableHead className="font-semibold">Status</TableHead>
                 <TableHead className="font-semibold text-right">Reservations</TableHead>
+                {isManager && <TableHead className="font-semibold text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={isManager ? 6 : 5} className="text-center text-muted-foreground py-8">
                     Loading staff...
                   </TableCell>
                 </TableRow>
               ) : staffReservations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={isManager ? 6 : 5} className="text-center text-muted-foreground py-8">
                     No staff members found. Please add staff to the database.
                   </TableCell>
                 </TableRow>
@@ -153,9 +218,24 @@ export default function StaffReports() {
                         {member.Role}
                       </span>
                     </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{member.Shift || 'Day'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[member.Status || 'Active'] || 'bg-gray-100 text-gray-800'}`}>
+                        {member.Status || 'Active'}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right font-semibold">
                       {member.reservationsHandled}
                     </TableCell>
+                    {isManager && (
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditStaff(member)} className="h-8 w-8 p-0">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -244,6 +324,66 @@ export default function StaffReports() {
           </div>
         </div>
       </div>
+
+      {/* Staff Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Staff Member</DialogTitle>
+            <DialogDescription>
+              Update {editingStaff?.First_Name} {editingStaff?.Last_Name}'s details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Role</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Manager">Manager</SelectItem>
+                  <SelectItem value="Housekeeping">Housekeeping</SelectItem>
+                  <SelectItem value="Accountant">Accountant</SelectItem>
+                  <SelectItem value="ReservationAgent">ReservationAgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Shift</Label>
+              <Select value={editShift} onValueChange={setEditShift}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Day">Day</SelectItem>
+                  <SelectItem value="Night">Night</SelectItem>
+                  <SelectItem value="Rotating">Rotating</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="OnLeave">On Leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveStaff} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

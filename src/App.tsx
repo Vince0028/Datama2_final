@@ -12,6 +12,7 @@ import { StaffLayout } from "./components/layout/StaffLayout";
 import GuestDashboard from "./pages/GuestDashboard";
 import GuestRooms from "./pages/GuestRooms";
 import GuestBookings from "./pages/GuestBookings";
+import GuestProfile from "./pages/GuestProfile";
 
 // Auth Pages
 import Login from "./pages/Login";
@@ -34,8 +35,6 @@ const roleAccess: Record<string, string[]> = {
   Manager: ['/staff/dashboard', '/staff/rooms', '/staff/reservations', '/staff/guests', '/staff/reports'],
   Housekeeping: ['/staff/rooms'],
   Accountant: ['/staff/dashboard'],
-  FrontDesk: ['/staff/dashboard', '/staff/reservations', '/staff/guests'],
-  Concierge: ['/staff/dashboard', '/staff/guests'],
   ReservationAgent: ['/staff/dashboard', '/staff/reservations', '/staff/rooms'],
 };
 
@@ -44,8 +43,6 @@ const roleDefaultPage: Record<string, string> = {
   Manager: '/staff/dashboard',
   Housekeeping: '/staff/rooms',
   Accountant: '/staff/dashboard',
-  FrontDesk: '/staff/dashboard',
-  Concierge: '/staff/dashboard',
   ReservationAgent: '/staff/dashboard',
 };
 
@@ -95,6 +92,11 @@ const AppRoutes = () => {
       <Route path="/guest/booking" element={
         <GuestLayout>
           <GuestBookings />
+        </GuestLayout>
+      } />
+      <Route path="/guest/profile" element={
+        <GuestLayout>
+          <GuestProfile />
         </GuestLayout>
       } />
 

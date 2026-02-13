@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase, rawQuery, rawMutate, setCachedToken } from '@/lib/supabase';
+import { supabase, rawQuery, rawMutate, setCachedToken, getCachedToken } from '@/lib/supabase';
 import type { AuthUser } from '@/types/auth';
 import type { Guest } from '@/types/hotel';
 import { toast } from 'sonner';
@@ -12,6 +12,8 @@ interface AuthContextType {
     login: (email: string, password: string, userType: 'Guest' | 'Staff') => Promise<boolean>;
     signup: (email: string, password: string, guestData: Partial<Guest>) => Promise<boolean>;
     logout: () => void;
+    updateGuestProfile: (data: Partial<Guest>) => Promise<boolean>;
+    updateStaff: (staffId: number, data: Partial<{ shift: string; status: string; role: string }>) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,7 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         First_Name: guestData.first_name || guestData.First_Name,
                         Last_Name: guestData.last_name || guestData.Last_Name,
                         Email: guestData.email || guestData.Email,
-                        Phone: guestData.phone || guestData.Phone
+                        Phone: guestData.phone || guestData.Phone,
+                        Address: guestData.address || guestData.Address || '',
+                        City: guestData.city || guestData.City || '',
+                        Postal_Code: guestData.postal_code || guestData.Postal_Code || '',
                     },
                 });
                 return;
@@ -228,12 +233,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             body: {
                 first_name: guestData.First_Name,
                 last_name: guestData.Last_Name,
-                email: email,
-                phone: guestData.Phone,
+                email: email.trim(),
+                phone: guestData.Phone || '',
                 middle_name: '',
-                address: '',
-                city: '',
-                postal_code: '',
+                address: guestData.Address || '',
+                city: guestData.City || '',
+                postal_code: guestData.Postal_Code || '',
             },
             returnData: true,
             single: true,
@@ -269,8 +274,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.success('Logged out successfully');
     };
 
+    const updateGuestProfile = async (data: Partial<Guest>): Promise<boolean> => {
+        if (!user?.Guest_ID) return false;
+        const token = getCachedToken();
+        if (!token) { toast.error('Not authenticated'); return false; }
+
+        const { error } = await rawMutate('guest', 'PATCH', {
+            body: {
+                first_name: data.First_Name,
+                last_name: data.Last_Name,
+                phone: data.Phone,
+                address: data.Address || '',
+                city: data.City || '',
+                postal_code: data.Postal_Code || '',
+            },
+            filters: `guest_id=eq.${user.Guest_ID}`,
+            token,
+        });
+
+        if (error) {
+            toast.error('Failed to update profile: ' + error.message);
+            return false;
+        }
+
+        // Refresh user data
+        await fetchUserDetails(user.Email, token);
+        toast.success('Profile updated successfully');
+        return true;
+    };
+
+    const updateStaff = async (staffId: number, data: Partial<{ shift: string; status: string; role: string }>): Promise<boolean> => {
+        const token = getCachedToken();
+        if (!token) { toast.error('Not authenticated'); return false; }
+
+        const body: any = {};
+        if (data.shift) body.shift = data.shift;
+        if (data.status) body.status = data.status;
+        if (data.role) body.role = data.role;
+
+        const { error } = await rawMutate('staff', 'PATCH', {
+            body,
+            filters: `staff_id=eq.${staffId}`,
+            token,
+        });
+
+        if (error) {
+            toast.error('Failed to update staff: ' + error.message);
+            return false;
+        }
+
+        toast.success('Staff updated successfully');
+        return true;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isInitializing, login, signup, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isInitializing, login, signup, logout, updateGuestProfile, updateStaff }}>
             {children}
         </AuthContext.Provider>
     );

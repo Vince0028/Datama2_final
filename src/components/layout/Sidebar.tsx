@@ -31,10 +31,6 @@ function getNavigationForRole(role?: string) {
       return allNavigation.filter(n => n.name === 'Rooms');
     case 'Accountant':
       return allNavigation.filter(n => n.name === 'Dashboard');
-    case 'FrontDesk':
-      return allNavigation.filter(n => ['Dashboard', 'Reservations', 'Guests'].includes(n.name));
-    case 'Concierge':
-      return allNavigation.filter(n => ['Dashboard', 'Guests'].includes(n.name));
     case 'ReservationAgent':
       return allNavigation.filter(n => ['Dashboard', 'Reservations', 'Rooms'].includes(n.name));
     case 'Manager':

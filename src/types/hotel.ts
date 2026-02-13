@@ -9,7 +9,7 @@ export interface Guest {
   Email: string;
   Address: string;
   City: string;
-  Postal_Code: number;
+  Postal_Code: string;
 }
 
 export interface RoomType {
@@ -31,7 +31,11 @@ export interface Staff {
   Staff_ID: number;
   First_Name: string;
   Last_Name: string;
-  Role: 'Manager' | 'FrontDesk' | 'Housekeeping' | 'Concierge' | 'Accountant' | 'ReservationAgent';
+  Email: string;
+  Role: 'Manager' | 'Housekeeping' | 'Accountant' | 'ReservationAgent';
+  Shift: 'Day' | 'Night' | 'Rotating';
+  Status: 'Active' | 'Inactive' | 'OnLeave';
+  Hire_Date: string;
 }
 
 export interface Reservation {
@@ -63,7 +67,7 @@ export interface Payment {
   Reservation_ID: number;
   Amount: number;
   Method: 'Cash' | 'Card' | 'GCash' | 'PayPal';
-  Status: 'Paid' | 'Pending';
+  Status: 'Paid' | 'Pending' | 'Refunded';
 }
 
 // Dashboard metrics

@@ -1,20 +1,19 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Loader2, User, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-export default function GuestSignup() {
-    const navigate = useNavigate();
-    const { signup, isLoading } = useAuth();
+export default function GuestProfile() {
+    const { user, updateGuestProfile, isLoading } = useAuth();
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        confirmPassword: '',
         firstName: '',
         lastName: '',
         phone: '',
@@ -22,17 +21,24 @@ export default function GuestSignup() {
         city: '',
         postalCode: '',
     });
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
+
+    // Populate form with current user data
+    useEffect(() => {
+        if (user?.guestData) {
+            setFormData({
+                firstName: user.guestData.First_Name || '',
+                lastName: user.guestData.Last_Name || '',
+                phone: user.guestData.Phone || '',
+                address: user.guestData.Address || '',
+                city: user.guestData.City || '',
+                postalCode: user.guestData.Postal_Code || '',
+            });
+        }
+    }, [user]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
         const name = e.target.name;
-
-        // Trim spaces for email and password fields
-        if (name === 'email' || name === 'password' || name === 'confirmPassword') {
-            value = value.replace(/\s/g, '');
-        }
 
         // Phone: allow only digits, spaces, +, and dashes
         if (name === 'phone') {
@@ -46,29 +52,19 @@ export default function GuestSignup() {
 
         setFormData(prev => ({ ...prev, [name]: value }));
         setError('');
+        setSuccess('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setSuccess('');
 
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
-            return;
-        }
-
-        if (formData.password.length < 6) {
-            setError('Password must be at least 6 characters');
-            return;
-        }
-
-        // Validate names are not empty after trim
         if (!formData.firstName.trim() || !formData.lastName.trim()) {
             setError('First name and last name are required');
             return;
         }
 
-        // Validate phone is provided and has proper format
         if (!formData.phone.trim()) {
             setError('Phone number is required');
             return;
@@ -79,7 +75,8 @@ export default function GuestSignup() {
             return;
         }
 
-        const success = await signup(formData.email.trim(), formData.password, {
+        setIsSaving(true);
+        const result = await updateGuestProfile({
             First_Name: formData.firstName.trim(),
             Last_Name: formData.lastName.trim(),
             Phone: formData.phone.trim(),
@@ -88,29 +85,42 @@ export default function GuestSignup() {
             Postal_Code: formData.postalCode.trim(),
         });
 
-        if (success) {
-            navigate('/login');
+        if (result) {
+            setSuccess('Profile updated successfully!');
         }
+        setIsSaving(false);
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')] bg-cover bg-center opacity-10" />
-
-            <Card className="w-full max-w-md relative z-10 shadow-2xl border-none bg-background/95 backdrop-blur-sm">
-                <CardHeader className="text-center space-y-2 pb-2">
-                    <Link to="/login" className="absolute left-4 top-4 text-muted-foreground hover:text-foreground transition-colors">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                    <div className="mx-auto w-auto h-16 flex items-center justify-center mb-4">
-                        <img src="/website_logo.png" alt="Nano Banan" className="h-16 w-auto" />
+        <div className="container max-w-2xl py-10">
+            <Card className="shadow-lg border-none">
+                <CardHeader className="space-y-1">
+                    <div className="flex items-center gap-3">
+                        <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Link>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                            <User className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-2xl font-display">My Account</CardTitle>
+                            <CardDescription>Update your personal information</CardDescription>
+                        </div>
                     </div>
-                    <CardTitle className="text-2xl font-display">Create Account</CardTitle>
-                    <CardDescription>Join us and start booking your perfect stay</CardDescription>
                 </CardHeader>
 
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-muted-foreground text-sm">Email</Label>
+                            <Input
+                                value={user?.Email || ''}
+                                disabled
+                                className="bg-muted"
+                            />
+                            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="firstName">First Name</Label>
@@ -134,19 +144,6 @@ export default function GuestSignup() {
                                     required
                                 />
                             </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="your@email.com"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                            />
                         </div>
 
                         <div className="space-y-2">
@@ -196,59 +193,19 @@ export default function GuestSignup() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
-                            <div className="relative">
-                                <Input
-                                    id="password"
-                                    name="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    required
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="confirmPassword">Confirm Password</Label>
-                            <Input
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                type="password"
-                                placeholder="••••••••"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
                         {error && (
                             <p className="text-sm text-destructive text-center">{error}</p>
                         )}
+                        {success && (
+                            <p className="text-sm text-green-600 text-center">{success}</p>
+                        )}
                     </CardContent>
 
-                    <CardFooter className="flex flex-col gap-4">
-                        <Button type="submit" className="w-full" disabled={isLoading}>
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Create Account
+                    <CardFooter>
+                        <Button type="submit" className="w-full" disabled={isSaving || isLoading}>
+                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Save Changes
                         </Button>
-                        <p className="text-sm text-muted-foreground text-center">
-                            Already have an account?{' '}
-                            <Link to="/login" className="text-primary hover:underline font-medium">
-                                Sign in
-                            </Link>
-                        </p>
                     </CardFooter>
                 </form>
             </Card>

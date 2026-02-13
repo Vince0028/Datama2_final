@@ -75,7 +75,15 @@ CREATE TABLE Guest (
     City        VARCHAR(100),
     Postal_Code VARCHAR(20),
     Created_At  TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT email_format CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+    CONSTRAINT email_format      CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+    CONSTRAINT guest_fname_not_empty CHECK (TRIM(First_Name) <> ''),
+    CONSTRAINT guest_lname_not_empty CHECK (TRIM(Last_Name) <> ''),
+    CONSTRAINT guest_phone_not_empty CHECK (TRIM(Phone) <> ''),
+    CONSTRAINT guest_phone_format    CHECK (Phone ~ '^[+]?[0-9][0-9\s\-]{6,19}$'),
+    CONSTRAINT guest_name_alpha      CHECK (
+        First_Name ~* '^[A-Za-z\s\-\''.]+$'
+        AND Last_Name ~* '^[A-Za-z\s\-\''.]+$'
+    )
 );
 
 
@@ -107,8 +115,10 @@ CREATE TABLE Room (
     Room_Number VARCHAR(10) NOT NULL UNIQUE,
     RoomType_ID INT         NOT NULL,
     Status      VARCHAR(20) NOT NULL DEFAULT 'Available',
-    Floor       INT,
-    CONSTRAINT positive_floor CHECK (Floor > 0),
+    Floor       INT         NOT NULL,
+    CONSTRAINT positive_floor    CHECK (Floor > 0),
+    CONSTRAINT room_status_check CHECK (Status IN ('Available', 'Occupied', 'Maintenance')),
+    CONSTRAINT room_number_format CHECK (TRIM(Room_Number) <> ''),
     FOREIGN KEY (RoomType_ID) REFERENCES RoomType(RoomType_ID)
 );
 
@@ -126,10 +136,15 @@ CREATE TABLE Staff (
     Last_Name  VARCHAR(100) NOT NULL,
     Email      VARCHAR(100) NOT NULL UNIQUE,
     Role       VARCHAR(50)  NOT NULL,
-    Shift      VARCHAR(50)  DEFAULT 'Day',
+    Shift      VARCHAR(50)  NOT NULL DEFAULT 'Day',
     Hire_Date  DATE DEFAULT CURRENT_DATE,
-    Status     VARCHAR(20)  DEFAULT 'Active',
-    CHECK (Role IN ('Manager', 'Housekeeping', 'Accountant', 'FrontDesk', 'Concierge', 'ReservationAgent'))
+    Status     VARCHAR(20)  NOT NULL DEFAULT 'Active',
+    CONSTRAINT staff_fname_not_empty CHECK (TRIM(First_Name) <> ''),
+    CONSTRAINT staff_lname_not_empty CHECK (TRIM(Last_Name) <> ''),
+    CONSTRAINT staff_email_format    CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+    CONSTRAINT staff_role_check      CHECK (Role IN ('Manager', 'Housekeeping', 'Accountant', 'ReservationAgent')),
+    CONSTRAINT staff_shift_check     CHECK (Shift IN ('Day', 'Night', 'Rotating')),
+    CONSTRAINT staff_status_check    CHECK (Status IN ('Active', 'Inactive', 'OnLeave'))
 );
 
 
@@ -170,7 +185,8 @@ CREATE TABLE ReservationGuest (
     Guest_Type     VARCHAR(20) NOT NULL DEFAULT 'Primary',
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
     FOREIGN KEY (Guest_ID)       REFERENCES Guest(Guest_ID),
-    UNIQUE (Reservation_ID, Guest_ID)
+    UNIQUE (Reservation_ID, Guest_ID),
+    CONSTRAINT guest_type_check CHECK (Guest_Type IN ('Primary', 'Additional'))
 );
 
 
@@ -191,7 +207,8 @@ CREATE TABLE Payment (
     Status                VARCHAR(20)    NOT NULL DEFAULT 'Pending',
     Transaction_Reference VARCHAR(100),
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
-    CONSTRAINT payment_method_check CHECK (Method IN ('Cash', 'Card', 'GCash', 'PayPal'))
+    CONSTRAINT payment_method_check CHECK (Method IN ('Cash', 'Card', 'GCash', 'PayPal')),
+    CONSTRAINT payment_status_check CHECK (Status IN ('Pending', 'Paid', 'Refunded'))
 );
 
 
@@ -210,7 +227,11 @@ CREATE TABLE ReservationLog (
     New_Status     VARCHAR(20)  NOT NULL,
     Created_At     TIMESTAMPTZ  DEFAULT NOW(),
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
-    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID)
+    FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID),
+    CONSTRAINT log_action_check          CHECK (Action IN ('Approved', 'Rejected', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    CONSTRAINT log_prev_status_check     CHECK (Previous_Status IS NULL OR Previous_Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    CONSTRAINT log_new_status_check      CHECK (New_Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    CONSTRAINT log_action_not_empty      CHECK (TRIM(Action) <> '')
 );
 
 
