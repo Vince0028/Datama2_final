@@ -67,7 +67,7 @@ export default function StaffLogin() {
                 <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                         <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-lg border border-primary/10">
-                            <Briefcase className="h-4 w-4 text-primary" />
+                            <Briefcase className="h-4 w-4 text-accent" />
                             <span className="text-sm text-muted-foreground">Staff Access Only</span>
                         </div>
 

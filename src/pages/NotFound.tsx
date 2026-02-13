@@ -12,7 +12,7 @@ const NotFound = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-in">
-      <h1 className="text-6xl font-display font-bold text-primary mb-4">404</h1>
+      <h1 className="text-6xl font-display font-bold text-accent mb-4">404</h1>
       <p className="text-xl text-muted-foreground mb-8">Page not found</p>
       <Button asChild>
         <Link to="/" className="gap-2">

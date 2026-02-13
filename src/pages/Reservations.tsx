@@ -119,7 +119,7 @@ export default function Reservations() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-bold">
+                      <span className="bg-accent/10 text-accent px-2 py-1 rounded text-xs font-bold">
                         {reservation.room?.Room_Number}
                       </span>
                       <span className="text-xs text-muted-foreground">

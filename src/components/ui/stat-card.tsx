@@ -37,7 +37,7 @@ export function StatCard({
         <div className="space-y-2">
           <p className={cn(
             "text-sm font-medium",
-            variant === 'default' ? "text-muted-foreground" : "opacity-80"
+            variant === 'default' ? "text-muted-foreground" : "opacity-90"
           )}>
             {title}
           </p>
@@ -48,9 +48,9 @@ export function StatCard({
             {trend && (
               <span className={cn(
                 "text-xs font-medium px-1.5 py-0.5 rounded",
-                trend.isPositive 
-                  ? "status-available" 
-                  : "status-occupied"
+                variant === 'default' 
+                  ? (trend.isPositive ? "status-available" : "status-occupied")
+                  : "bg-white/20 text-white"
               )}>
                 {trend.isPositive ? '+' : ''}{trend.value}%
               </span>
@@ -59,7 +59,7 @@ export function StatCard({
           {subtitle && (
             <p className={cn(
               "text-sm",
-              variant === 'default' ? "text-muted-foreground" : "opacity-70"
+              variant === 'default' ? "text-muted-foreground" : "opacity-80"
             )}>
               {subtitle}
             </p>
@@ -67,9 +67,9 @@ export function StatCard({
         </div>
         <div className={cn(
           "flex h-12 w-12 items-center justify-center rounded-lg",
-          variant === 'default' && "bg-primary/10 text-primary",
-          variant === 'primary' && "bg-white/20 text-white",
-          variant === 'accent' && "bg-white/20 text-white"
+          variant === 'default' && "bg-accent/10 text-accent",
+          variant === 'primary' && "bg-white/15 text-amber-300",
+          variant === 'accent' && "bg-black/15 text-white"
         )}>
           {icon}
         </div>

@@ -146,7 +146,7 @@ export default function GuestBookings() {
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">You don't have any bookings yet.</p>
-            <a href="/guest/rooms" className="text-primary hover:underline mt-2 inline-block">
+            <a href="/guest/rooms" className="text-accent hover:underline mt-2 inline-block">
               Browse available rooms →
             </a>
           </CardContent>

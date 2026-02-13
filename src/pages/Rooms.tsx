@@ -123,7 +123,7 @@ export default function Rooms() {
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                   <Bed className="h-6 w-6" />
                 </div>
                 <div>

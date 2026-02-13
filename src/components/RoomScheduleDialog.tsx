@@ -39,7 +39,8 @@ export function RoomScheduleDialog({ roomId, roomName }: RoomScheduleDialogProps
             const end = new Date(res.Check_Out);
             end.setHours(0, 0, 0, 0);
 
-            while (current < end) {
+            // Include checkout day — guest occupies room until checkout morning
+            while (current <= end) {
                 if (isActive) booked.push(new Date(current));
                 else if (isPending) pending.push(new Date(current));
                 current.setDate(current.getDate() + 1);

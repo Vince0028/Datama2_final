@@ -99,8 +99,8 @@ export default function GuestProfile() {
                         <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
                             <ArrowLeft className="h-5 w-5" />
                         </Link>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                            <User className="h-5 w-5 text-primary" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
+                            <User className="h-5 w-5 text-accent" />
                         </div>
                         <div>
                             <CardTitle className="text-2xl font-display">My Account</CardTitle>

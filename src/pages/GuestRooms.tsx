@@ -150,8 +150,9 @@ export default function GuestRooms() {
                                     <CardTitle>Room {room.Room_Number}</CardTitle>
                                     <CardDescription>{room.typeName}</CardDescription>
                                 </div>
-                                <span className="font-semibold text-lg text-primary">
+                                <span className="font-semibold text-lg text-accent">
                                     ₱{room.price.toLocaleString()}
+                                    <span className="text-xs font-normal text-muted-foreground">/night</span>
                                 </span>
                             </div>
                         </CardHeader>

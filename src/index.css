@@ -6,99 +6,99 @@
 
 @layer base {
   :root {
-    /* Hotel Luxury Theme - Navy & Amber */
-    --background: 220 20% 97%;
-    --foreground: 220 30% 15%;
+    /* Hotel Luxury Theme - Black & Gold */
+    --background: 40 10% 96%;
+    --foreground: 40 10% 10%;
     
     --card: 0 0% 100%;
-    --card-foreground: 220 30% 15%;
+    --card-foreground: 40 10% 10%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 15%;
+    --popover-foreground: 40 10% 10%;
     
-    --primary: 220 60% 25%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 40 5% 12%;
+    --primary-foreground: 40 15% 95%;
     
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 220 30% 25%;
+    --secondary: 40 8% 92%;
+    --secondary-foreground: 40 10% 20%;
     
-    --muted: 220 15% 95%;
-    --muted-foreground: 220 15% 45%;
+    --muted: 40 8% 94%;
+    --muted-foreground: 40 8% 45%;
     
-    --accent: 38 90% 50%;
-    --accent-foreground: 220 30% 15%;
+    --accent: 43 72% 48%;
+    --accent-foreground: 40 10% 8%;
     
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 220 15% 90%;
-    --input: 220 15% 90%;
-    --ring: 220 60% 25%;
+    --border: 40 10% 88%;
+    --input: 40 10% 88%;
+    --ring: 43 72% 48%;
     
     --radius: 0.75rem;
     
     /* Status Colors */
     --status-available: 142 76% 36%;
     --status-occupied: 0 72% 51%;
-    --status-maintenance: 38 92% 50%;
-    --status-booked: 220 60% 50%;
+    --status-maintenance: 43 72% 48%;
+    --status-booked: 43 50% 42%;
     --status-checkedin: 142 76% 36%;
-    --status-checkedout: 220 15% 60%;
+    --status-checkedout: 40 8% 55%;
     --status-cancelled: 0 72% 51%;
     
     /* Semantic Colors */
     --success: 142 76% 36%;
-    --warning: 38 92% 50%;
-    --info: 220 60% 50%;
+    --warning: 43 72% 48%;
+    --info: 43 50% 42%;
     
     /* Sidebar */
-    --sidebar-background: 220 60% 20%;
-    --sidebar-foreground: 220 20% 95%;
-    --sidebar-primary: 38 90% 50%;
-    --sidebar-primary-foreground: 220 30% 15%;
-    --sidebar-accent: 220 50% 30%;
-    --sidebar-accent-foreground: 220 20% 95%;
-    --sidebar-border: 220 50% 25%;
-    --sidebar-ring: 38 90% 50%;
+    --sidebar-background: 40 8% 8%;
+    --sidebar-foreground: 40 20% 92%;
+    --sidebar-primary: 43 72% 48%;
+    --sidebar-primary-foreground: 40 10% 8%;
+    --sidebar-accent: 40 8% 16%;
+    --sidebar-accent-foreground: 40 20% 92%;
+    --sidebar-border: 40 8% 18%;
+    --sidebar-ring: 43 72% 48%;
   }
 
   .dark {
-    --background: 220 25% 10%;
-    --foreground: 220 20% 95%;
+    --background: 40 5% 6%;
+    --foreground: 40 15% 92%;
     
-    --card: 220 25% 14%;
-    --card-foreground: 220 20% 95%;
+    --card: 40 5% 10%;
+    --card-foreground: 40 15% 92%;
     
-    --popover: 220 25% 14%;
-    --popover-foreground: 220 20% 95%;
+    --popover: 40 5% 10%;
+    --popover-foreground: 40 15% 92%;
     
-    --primary: 38 90% 50%;
-    --primary-foreground: 220 30% 10%;
+    --primary: 43 72% 48%;
+    --primary-foreground: 40 10% 6%;
     
-    --secondary: 220 25% 20%;
-    --secondary-foreground: 220 20% 90%;
+    --secondary: 40 8% 16%;
+    --secondary-foreground: 40 15% 88%;
     
-    --muted: 220 25% 18%;
-    --muted-foreground: 220 15% 60%;
+    --muted: 40 5% 14%;
+    --muted-foreground: 40 10% 55%;
     
-    --accent: 38 90% 50%;
-    --accent-foreground: 220 30% 10%;
+    --accent: 43 72% 48%;
+    --accent-foreground: 40 10% 6%;
     
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 220 25% 20%;
-    --input: 220 25% 20%;
-    --ring: 38 90% 50%;
+    --border: 40 5% 18%;
+    --input: 40 5% 18%;
+    --ring: 43 72% 48%;
     
-    --sidebar-background: 220 30% 8%;
-    --sidebar-foreground: 220 20% 95%;
-    --sidebar-primary: 38 90% 50%;
-    --sidebar-primary-foreground: 220 30% 10%;
-    --sidebar-accent: 220 25% 15%;
-    --sidebar-accent-foreground: 220 20% 95%;
-    --sidebar-border: 220 25% 15%;
-    --sidebar-ring: 38 90% 50%;
+    --sidebar-background: 40 5% 5%;
+    --sidebar-foreground: 40 15% 92%;
+    --sidebar-primary: 43 72% 48%;
+    --sidebar-primary-foreground: 40 10% 6%;
+    --sidebar-accent: 40 5% 12%;
+    --sidebar-accent-foreground: 40 15% 92%;
+    --sidebar-border: 40 5% 12%;
+    --sidebar-ring: 43 72% 48%;
   }
 }
 
@@ -123,19 +123,19 @@
   }
   
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(220 50% 35%) 100%);
+    background: linear-gradient(135deg, hsl(40 6% 10%) 0%, hsl(40 8% 18%) 100%);
   }
   
   .gradient-accent {
-    background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(28 90% 55%) 100%);
+    background: linear-gradient(135deg, hsl(43 72% 48%) 0%, hsl(38 55% 38%) 100%);
   }
   
   .shadow-card {
-    box-shadow: 0 4px 6px -1px hsl(220 30% 15% / 0.08), 0 2px 4px -2px hsl(220 30% 15% / 0.05);
+    box-shadow: 0 4px 6px -1px hsl(40 10% 10% / 0.06), 0 2px 4px -2px hsl(40 10% 10% / 0.04);
   }
   
   .shadow-elevated {
-    box-shadow: 0 10px 15px -3px hsl(220 30% 15% / 0.1), 0 4px 6px -4px hsl(220 30% 15% / 0.05);
+    box-shadow: 0 10px 15px -3px hsl(40 10% 10% / 0.08), 0 4px 6px -4px hsl(40 10% 10% / 0.04);
   }
   
   .animate-fade-in {

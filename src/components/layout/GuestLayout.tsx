@@ -65,8 +65,8 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                                     key={item.name}
                                     to={item.href}
                                     className={cn(
-                                        "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-                                        isActive ? "text-primary" : "text-muted-foreground"
+                                        "flex items-center gap-2 text-sm font-medium transition-colors hover:text-accent",
+                                        isActive ? "text-accent" : "text-muted-foreground"
                                     )}
                                 >
                                     <item.icon className="h-4 w-4" />
@@ -80,8 +80,8 @@ export function GuestLayout({ children }: GuestLayoutProps) {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="sm" className="gap-2">
-                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
-                                                <User className="h-3.5 w-3.5 text-primary" />
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/10">
+                                                <User className="h-3.5 w-3.5 text-accent" />
                                             </div>
                                             <span className="hidden sm:inline-block text-sm">
                                                 {user.guestData?.First_Name || 'Guest'}

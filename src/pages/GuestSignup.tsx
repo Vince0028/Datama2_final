@@ -245,7 +245,7 @@ export default function GuestSignup() {
                         </Button>
                         <p className="text-sm text-muted-foreground text-center">
                             Already have an account?{' '}
-                            <Link to="/login" className="text-primary hover:underline font-medium">
+                            <Link to="/login" className="text-accent hover:underline font-medium">
                                 Sign in
                             </Link>
                         </p>

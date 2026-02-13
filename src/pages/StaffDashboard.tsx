@@ -101,7 +101,7 @@ export default function StaffDashboard() {
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary font-semibold">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent font-semibold">
                                             {reservation.room?.Room_Number || '?'}
                                         </div>
                                         <div>

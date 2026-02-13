@@ -70,7 +70,7 @@ export default function Guests() {
                   onClick={() => setSelectedGuestId(guest.Guest_ID)}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-display font-bold text-lg">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground font-display font-bold text-lg">
                       {guest.First_Name[0]}{guest.Last_Name[0]}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -95,7 +95,7 @@ export default function Guests() {
                   </div>
                   <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
                     <span className="text-xs text-muted-foreground">Guest ID: {guest.Guest_ID}</span>
-                    <span className="text-xs font-medium text-primary">
+                    <span className="text-xs font-medium text-accent">
                       {reservationCount} reservation{reservationCount !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -104,7 +104,7 @@ export default function Guests() {
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                   <DialogTitle className="font-display text-xl flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground font-bold">
                       {guest.First_Name[0]}{guest.Last_Name[0]}
                     </div>
                     {guest.First_Name} {guest.Last_Name}

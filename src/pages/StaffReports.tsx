@@ -170,7 +170,7 @@ export default function StaffReports() {
         <div className="bg-card rounded-xl shadow-card overflow-hidden">
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-primary" />
+              <Users className="h-5 w-5 text-accent" />
               <h2 className="text-lg font-display font-semibold text-foreground">
                 Staff Directory
               </h2>
@@ -209,7 +209,7 @@ export default function StaffReports() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground font-semibold text-sm">
                           {member.First_Name[0]}{member.Last_Name[0]}
                         </div>
                         <span className="font-medium">
@@ -317,7 +317,7 @@ export default function StaffReports() {
               <p className="text-sm opacity-80">Total Collected</p>
               <p className="text-3xl font-bold font-display mt-2">{formatCurrency(totalPaid)}</p>
             </div>
-            <div className="rounded-xl gradient-accent text-accent-foreground p-6">
+            <div className="rounded-xl gradient-accent text-white p-6">
               <p className="text-sm opacity-80">Pending Payments</p>
               <p className="text-3xl font-bold font-display mt-2">{formatCurrency(totalPending)}</p>
             </div>
