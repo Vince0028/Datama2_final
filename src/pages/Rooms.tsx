@@ -15,13 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Room } from '@/types/hotel';
 import { RoomScheduleDialog } from '@/components/RoomScheduleDialog';
+import { toast } from 'sonner';
 
 type FilterStatus = 'All' | 'Available' | 'Occupied' | 'Maintenance';
 type FilterType = 'All' | string;
 
 export default function Rooms() {
   const { user } = useAuth();
-  const { rooms, updateRoomStatus, refreshData } = useReservations();
+  const { rooms, reservations, updateRoomStatus, refreshData } = useReservations();
 
   const isReadOnly = user?.staffData?.Role === 'ReservationAgent';
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('All');
@@ -46,7 +47,33 @@ export default function Rooms() {
     Maintenance: 'border-amber-200 bg-amber-50',
   };
 
+  // Check if a room has active/pending reservations
+  const roomHasActiveBooking = (roomId: number) => {
+    return reservations.some(
+      r => r.Room_ID === roomId && ['Pending', 'Booked', 'CheckedIn'].includes(r.Status)
+    );
+  };
+
+  // Check if a room is actively occupied today (check-in <= today < check-out)
+  const roomIsOccupiedToday = (roomId: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    return reservations.some(
+      r => r.Room_ID === roomId
+        && ['Booked', 'CheckedIn'].includes(r.Status)
+        && r.Check_In <= today
+        && r.Check_Out > today
+    );
+  };
+
   const handleStatusChange = (roomId: number, value: string) => {
+    if ((value === 'Maintenance' || value === 'Occupied') && roomHasActiveBooking(roomId)) {
+      toast.error('Cannot change status this room has pending or active reservations.');
+      return;
+    }
+    if (value === 'Available' && roomIsOccupiedToday(roomId)) {
+      toast.error('Cannot set to Available this room has an active booking for today.');
+      return;
+    }
     updateRoomStatus(roomId, value as Room['Status']);
   };
 

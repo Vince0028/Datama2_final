@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Calendar, Search, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Plus, Calendar, Search, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
@@ -24,10 +24,23 @@ import { StaffBookingDialog } from '@/components/StaffBookingDialog';
 const formatId = (id: number, digits = 3) => String(id).padStart(digits, '0');
 
 export default function Reservations() {
-  const { reservations, updateStatus } = useReservations();
+  const { reservations, updateStatus, refreshData } = useReservations();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      toast.success('Reservations refreshed');
+    } catch {
+      toast.error('Failed to refresh');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleApprove = (id: number) => {
     updateStatus(id, 'Booked');
@@ -78,14 +91,25 @@ export default function Reservations() {
           </TabsList>
         </Tabs>
 
-        <div className="relative w-full md:w-auto">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search guests or rooms..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 w-full md:w-[300px]"
-          />
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Refresh reservations"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <div className="relative flex-1 md:flex-none">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search guests or rooms..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full md:w-[300px]"
+            />
+          </div>
         </div>
       </div>
 
