@@ -152,6 +152,46 @@ CREATE INDEX IF NOT EXISTS idx_staff_status  ON staff(status);
 
 
 -- ============================================================================
+-- 8. STAFF — Add Is_Owner column (original manager protection)
+-- ============================================================================
+
+-- Add the column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'staff' AND column_name = 'is_owner'
+    ) THEN
+        ALTER TABLE staff ADD COLUMN is_owner BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+END $$;
+
+-- Mark the original manager as owner (manager@hotel.com)
+UPDATE staff SET is_owner = TRUE WHERE email = 'manager@hotel.com' AND role = 'Manager';
+
+
+-- ============================================================================
+-- 9. RLS — Allow managers to update staff records
+-- ============================================================================
+
+-- Drop if it already exists (safe re-run)
+DROP POLICY IF EXISTS "Managers can update staff" ON Staff;
+
+CREATE POLICY "Managers can update staff" ON Staff
+    FOR UPDATE TO authenticated
+    USING (
+        auth.jwt()->>'email' IN (
+            SELECT email FROM Staff WHERE role = 'Manager'
+        )
+    )
+    WITH CHECK (
+        auth.jwt()->>'email' IN (
+            SELECT email FROM Staff WHERE role = 'Manager'
+        )
+    );
+
+
+-- ============================================================================
 -- DONE
 -- ============================================================================
 SELECT '✅ Migration applied — all constraints added' AS status;

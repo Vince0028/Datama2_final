@@ -69,6 +69,7 @@ export default function StaffReports() {
           Shift: s.shift || s.Shift || 'Day',
           Status: s.status || s.Status || 'Active',
           Hire_Date: s.hire_date || s.Hire_Date || '',
+          Is_Owner: s.is_owner ?? s.Is_Owner ?? false,
         }));
         console.log('Mapped staff:', mappedStaff);
         setStaff(mappedStaff);
@@ -87,14 +88,17 @@ export default function StaffReports() {
     }
   }, [user]);
   
-  // Calculate reservations handled by each staff (exclude Manager)
+  // Calculate reservations handled by each staff, exclude self from list
   const staffReservations = staff
-    .filter(s => s.Role !== 'Manager')
+    .filter(s => s.Staff_ID !== user?.Staff_ID) // hide logged-in user
     .map(s => {
       const handled = reservations.filter(r => r.Staff_ID === s.Staff_ID).length;
       return { ...s, reservationsHandled: handled };
     })
     .sort((a, b) => b.reservationsHandled - a.reservationsHandled);
+
+  // Owner (original manager) can edit everyone; promoted managers cannot edit the owner
+  const canEditStaff = (member: Staff) => isManager && !member.Is_Owner;
 
   const formatCurrency = (amount: number) => 
     new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
@@ -231,9 +235,11 @@ export default function StaffReports() {
                     </TableCell>
                     {isManager && (
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEditStaff(member)} className="h-8 w-8 p-0">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {canEditStaff(member) ? (
+                          <Button variant="ghost" size="sm" onClick={() => handleEditStaff(member)} className="h-8 w-8 p-0">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                       </TableCell>
                     )}
                   </TableRow>

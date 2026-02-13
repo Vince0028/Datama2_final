@@ -58,6 +58,20 @@ CREATE POLICY "Authenticated can view staff" ON Staff
     FOR SELECT TO authenticated
     USING (true);
 
+-- Managers can update staff records (role, shift, status)
+CREATE POLICY "Managers can update staff" ON Staff
+    FOR UPDATE TO authenticated
+    USING (
+        auth.jwt()->>'email' IN (
+            SELECT email FROM Staff WHERE role = 'Manager'
+        )
+    )
+    WITH CHECK (
+        auth.jwt()->>'email' IN (
+            SELECT email FROM Staff WHERE role = 'Manager'
+        )
+    );
+
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- STEP 4: Guest — own data + staff can view all

@@ -139,6 +139,7 @@ CREATE TABLE Staff (
     Shift      VARCHAR(50)  NOT NULL DEFAULT 'Day',
     Hire_Date  DATE DEFAULT CURRENT_DATE,
     Status     VARCHAR(20)  NOT NULL DEFAULT 'Active',
+    Is_Owner   BOOLEAN      NOT NULL DEFAULT FALSE,
     CONSTRAINT staff_fname_not_empty CHECK (TRIM(First_Name) <> ''),
     CONSTRAINT staff_lname_not_empty CHECK (TRIM(Last_Name) <> ''),
     CONSTRAINT staff_email_format    CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),

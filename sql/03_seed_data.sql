@@ -53,11 +53,11 @@ INSERT INTO Room (Room_Number, RoomType_ID, Status, Floor) VALUES
 --     Manager           → Full access (all pages)
 --     ReservationAgent  → Dashboard, Reservations
 
-INSERT INTO Staff (First_Name, Last_Name, Email, Role, Shift) VALUES
-    ('Diego', 'Cruz',   'housekeeping@hotel.com',  'Housekeeping',     'Day'),
-    ('Ivy',   'Lopez',  'accountant@hotel.com',    'Accountant',       'Day'),
-    ('Leah',  'Garcia', 'manager@hotel.com',       'Manager',          'Day'),
-    ('Mark',  'Santos', 'reservation@hotel.com',   'ReservationAgent', 'Day');
+INSERT INTO Staff (First_Name, Last_Name, Email, Role, Shift, Is_Owner) VALUES
+    ('Diego', 'Cruz',   'housekeeping@hotel.com',  'Housekeeping',     'Day', FALSE),
+    ('Ivy',   'Lopez',  'accountant@hotel.com',    'Accountant',       'Day', FALSE),
+    ('Leah',  'Garcia', 'manager@hotel.com',       'Manager',          'Day', TRUE),
+    ('Mark',  'Santos', 'reservation@hotel.com',   'ReservationAgent', 'Day', FALSE);
 
 
 -- ─────────────────────────────────────────────────────────────────────────

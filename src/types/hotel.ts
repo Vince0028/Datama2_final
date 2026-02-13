@@ -36,6 +36,7 @@ export interface Staff {
   Shift: 'Day' | 'Night' | 'Rotating';
   Status: 'Active' | 'Inactive' | 'OnLeave';
   Hire_Date: string;
+  Is_Owner: boolean;
 }
 
 export interface Reservation {
