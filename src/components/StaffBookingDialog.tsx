@@ -33,6 +33,7 @@ export function StaffBookingDialog() {
 
     // Form State
     const [guestFirstName, setGuestFirstName] = useState("");
+    const [guestMiddleName, setGuestMiddleName] = useState("");
     const [guestLastName, setGuestLastName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
@@ -46,7 +47,7 @@ export function StaffBookingDialog() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const LIMITS = { firstName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
+    const LIMITS = { firstName: 50, middleName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
 
     // Auto-capitalize each word: "vince nelmar" → "Vince Nelmar", "VINCE" → "Vince"
     const toTitleCase = (str: string) =>
@@ -115,6 +116,7 @@ export function StaffBookingDialog() {
             checkIn,
             checkOut,
             guestFirstName,
+            guestMiddleName,
             guestLastName,
             guestEmail: email,
             guestPhone: parseInt(phone, 10),
@@ -128,6 +130,7 @@ export function StaffBookingDialog() {
                 checkIn,
                 checkOut,
                 guestFirstName: guestFirstName.trim(),
+                guestMiddleName: guestMiddleName.trim(),
                 guestLastName: guestLastName.trim(),
                 guestEmail: email.trim(),
                 guestPhone: parseInt(phone.trim(), 10),
@@ -143,6 +146,7 @@ export function StaffBookingDialog() {
             setCheckIn("");
             setCheckOut("");
             setGuestFirstName("");
+            setGuestMiddleName("");
             setGuestLastName("");
             setEmail("");
             setPhone("");
@@ -192,6 +196,17 @@ export function StaffBookingDialog() {
                                     <AlertCircle className="h-3 w-3" /> Minimum 2 characters required
                                 </p>
                             )}
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="middleName">Middle Name <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                            <Input
+                                id="middleName"
+                                placeholder="A."
+                                maxLength={LIMITS.middleName}
+                                value={guestMiddleName}
+                                onChange={(e) => setGuestMiddleName(toTitleCase(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.middleName)))}
+                            />
+                            {charHint(LIMITS.middleName, guestMiddleName)}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="lastName">Last Name</Label>

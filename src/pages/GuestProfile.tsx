@@ -16,6 +16,7 @@ export default function GuestProfile() {
 
     const [formData, setFormData] = useState({
         firstName: '',
+        middleName: '',
         lastName: '',
         phone: '',
         address: '',
@@ -28,6 +29,7 @@ export default function GuestProfile() {
         if (user?.guestData) {
             setFormData({
                 firstName: user.guestData.First_Name || '',
+                middleName: user.guestData.Middle_Name || '',
                 lastName: user.guestData.Last_Name || '',
                 phone: user.guestData.Phone ? String(user.guestData.Phone) : '',
                 address: user.guestData.Address || '',
@@ -37,7 +39,7 @@ export default function GuestProfile() {
         }
     }, [user]);
 
-    const LIMITS = { firstName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
+    const LIMITS = { firstName: 50, middleName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
 
     // Auto-capitalize each word: "vince nelmar" → "Vince Nelmar", "VINCE" → "Vince"
     const toTitleCase = (str: string) =>
@@ -53,7 +55,7 @@ export default function GuestProfile() {
         }
 
         // Names: allow only letters, spaces, hyphens, apostrophes, and dots — then Title Case
-        if (name === 'firstName' || name === 'lastName') {
+        if (name === 'firstName' || name === 'middleName' || name === 'lastName') {
             value = toTitleCase(value.replace(/[^A-Za-z\s\-''.]/g, ''));
         }
 
@@ -112,6 +114,7 @@ export default function GuestProfile() {
         setIsSaving(true);
         const result = await updateGuestProfile({
             First_Name: formData.firstName.trim(),
+            Middle_Name: formData.middleName.trim(),
             Last_Name: formData.lastName.trim(),
             Phone: parseInt(formData.phone.trim(), 10),
             Address: formData.address.trim(),
@@ -173,6 +176,18 @@ export default function GuestProfile() {
                                         <AlertCircle className="h-3 w-3" /> Minimum 2 characters required
                                     </p>
                                 )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="middleName">Middle Name <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                                <Input
+                                    id="middleName"
+                                    name="middleName"
+                                    placeholder="A."
+                                    maxLength={LIMITS.middleName}
+                                    value={formData.middleName}
+                                    onChange={handleChange}
+                                />
+                                {charHint('middleName', formData.middleName)}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lastName">Last Name</Label>

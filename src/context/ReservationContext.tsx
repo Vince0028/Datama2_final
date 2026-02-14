@@ -15,6 +15,7 @@ interface WalkInData {
     checkIn: string;
     checkOut: string;
     guestFirstName: string;
+    guestMiddleName?: string;
     guestLastName: string;
     guestEmail: string;
     guestPhone: number;
@@ -463,7 +464,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 guestId = existingGuests[0].guest_id;
             } else {
                 const { data: newGuest, error: guestError } = await rawMutate('guest', 'POST', {
-                    body: { first_name: data.guestFirstName, last_name: data.guestLastName, email: data.guestEmail, phone: data.guestPhone, middle_name: '', address: data.guestAddress || '', city: data.guestCity || '', postal_code: data.guestPostalCode || null },
+                    body: { first_name: data.guestFirstName, middle_name: data.guestMiddleName || '', last_name: data.guestLastName, email: data.guestEmail, phone: data.guestPhone, address: data.guestAddress || '', city: data.guestCity || '', postal_code: data.guestPostalCode || null },
                     returnData: true, single: true, token,
                 });
                 if (guestError) {

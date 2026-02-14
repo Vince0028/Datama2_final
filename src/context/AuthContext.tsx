@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     Staff_ID: null,
                     guestData: {
                         First_Name: guestData.first_name || guestData.First_Name,
+                        Middle_Name: guestData.middle_name || guestData.Middle_Name || '',
                         Last_Name: guestData.last_name || guestData.Last_Name,
                         Email: guestData.email || guestData.Email,
                         Phone: guestData.phone || guestData.Phone,
@@ -245,10 +246,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: newGuest, error: guestError } = await rawMutate('guest', 'POST', {
             body: {
                 first_name: guestData.First_Name,
+                middle_name: guestData.Middle_Name || '',
                 last_name: guestData.Last_Name,
                 email: email.trim(),
                 phone: guestData.Phone || 0,
-                middle_name: '',
                 address: guestData.Address || '',
                 city: guestData.City || '',
                 postal_code: guestData.Postal_Code || null,
@@ -299,6 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await rawMutate('guest', 'PATCH', {
             body: {
                 first_name: data.First_Name,
+                middle_name: data.Middle_Name || '',
                 last_name: data.Last_Name,
                 phone: data.Phone,
                 address: data.Address || '',

@@ -19,6 +19,7 @@ export interface AuthUser {
     // Joined data
     guestData?: {
         First_Name: string;
+        Middle_Name?: string;
         Last_Name: string;
         Email: string;
         Phone?: number;
