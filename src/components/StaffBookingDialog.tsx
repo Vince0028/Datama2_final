@@ -47,6 +47,10 @@ export function StaffBookingDialog() {
 
     const LIMITS = { firstName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
 
+    // Auto-capitalize each word: "vince nelmar" → "Vince Nelmar", "VINCE" → "Vince"
+    const toTitleCase = (str: string) =>
+        str.replace(/\b\w+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+
     const charHint = (limit: number, value: string) => {
         const remaining = limit - value.length;
         if (remaining <= Math.ceil(limit * 0.2) && remaining > 0) return <p className="text-xs text-amber-500 mt-0.5">{remaining} characters left</p>;
@@ -85,6 +89,11 @@ export function StaffBookingDialog() {
 
         if (!selectedRoomId) {
             toast.error("Please select a room");
+            return;
+        }
+
+        if (guestFirstName.trim().length < 2 || guestLastName.trim().length < 2) {
+            toast.error("First and last name must be at least 2 characters");
             return;
         }
 
@@ -164,7 +173,7 @@ export function StaffBookingDialog() {
                                 placeholder="Jane"
                                 maxLength={LIMITS.firstName}
                                 value={guestFirstName}
-                                onChange={(e) => setGuestFirstName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.firstName))}
+                                onChange={(e) => setGuestFirstName(toTitleCase(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.firstName)))}
                             />
                             {charHint(LIMITS.firstName, guestFirstName)}
                         </div>
@@ -176,7 +185,7 @@ export function StaffBookingDialog() {
                                 placeholder="Doe"
                                 maxLength={LIMITS.lastName}
                                 value={guestLastName}
-                                onChange={(e) => setGuestLastName(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.lastName))}
+                                onChange={(e) => setGuestLastName(toTitleCase(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.lastName)))}
                             />
                             {charHint(LIMITS.lastName, guestLastName)}
                         </div>
@@ -216,7 +225,7 @@ export function StaffBookingDialog() {
                             placeholder="123 Main Street"
                             maxLength={LIMITS.address}
                             value={address}
-                            onChange={(e) => setAddress(e.target.value.slice(0, LIMITS.address))}
+                            onChange={(e) => setAddress(toTitleCase(e.target.value.slice(0, LIMITS.address)))}
                         />
                         {charHint(LIMITS.address, address)}
                     </div>
@@ -229,7 +238,7 @@ export function StaffBookingDialog() {
                                 placeholder="Manila"
                                 maxLength={LIMITS.city}
                                 value={city}
-                                onChange={(e) => setCity(e.target.value.slice(0, LIMITS.city))}
+                                onChange={(e) => setCity(toTitleCase(e.target.value.slice(0, LIMITS.city)))}
                             />
                             {charHint(LIMITS.city, city)}
                         </div>

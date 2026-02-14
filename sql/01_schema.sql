@@ -83,8 +83,8 @@ CREATE TABLE Guest (
         OR (Phone >= 639000000000 AND Phone <= 639999999999)  -- intl:   63 9XX XXX XXXX
     ),
     CONSTRAINT guest_name_alpha      CHECK (
-        First_Name ~* '^[A-Za-z\s\-\''.]+$'
-        AND Last_Name ~* '^[A-Za-z\s\-\''.]+$'
+        First_Name ~ '^([A-Z][a-z''.]+)([ \-][A-Z][a-z''.]+)*$'
+        AND Last_Name ~ '^([A-Z][a-z''.]+)([ \-][A-Z][a-z''.]+)*$'
     )
 );
 

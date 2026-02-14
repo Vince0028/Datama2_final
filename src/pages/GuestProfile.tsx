@@ -38,6 +38,10 @@ export default function GuestProfile() {
 
     const LIMITS = { firstName: 50, lastName: 50, email: 100, address: 150, city: 50, postalCode: 4, phone: 13 };
 
+    // Auto-capitalize each word: "vince nelmar" → "Vince Nelmar", "VINCE" → "Vince"
+    const toTitleCase = (str: string) =>
+        str.replace(/\b\w+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
         const name = e.target.name;
@@ -47,9 +51,14 @@ export default function GuestProfile() {
             value = value.replace(/[^0-9]/g, '');
         }
 
-        // Names: allow only letters, spaces, hyphens, apostrophes, and dots
+        // Names: allow only letters, spaces, hyphens, apostrophes, and dots — then Title Case
         if (name === 'firstName' || name === 'lastName') {
-            value = value.replace(/[^A-Za-z\s\-''.]/g, '');
+            value = toTitleCase(value.replace(/[^A-Za-z\s\-''.]/g, ''));
+        }
+
+        // Address & City: auto Title Case
+        if (name === 'address' || name === 'city') {
+            value = toTitleCase(value);
         }
 
         // Enforce max length
@@ -76,6 +85,11 @@ export default function GuestProfile() {
 
         if (!formData.firstName.trim() || !formData.lastName.trim()) {
             setError('First name and last name are required');
+            return;
+        }
+
+        if (formData.firstName.trim().length < 2 || formData.lastName.trim().length < 2) {
+            setError('First name and last name must be at least 2 characters');
             return;
         }
 
