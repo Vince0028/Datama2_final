@@ -121,18 +121,20 @@ async function fetchRoomsFromDB(): Promise<{ rooms: Room[]; roomTypes: any[] }> 
 }
 
 async function fetchReservationsFromDB(): Promise<Reservation[]> {
-    const token = getCachedToken();
+    // Always read the latest token at each query — avoids stale-null captures
+    // when the function is called before auth finishes initialising.
+    const token = () => getCachedToken();
 
     // Raw REST doesn't support nested selects like supabase-js,
     // so we fetch each table and join in JS.
     const [resRes, roomsRes, typesRes, rgRes, guestsRes, staffRes, paymentsRes] = await Promise.all([
-        rawQuery('reservation', { order: 'created_at.desc', token }),
-        rawQuery('room', { token }),
-        rawQuery('roomtype', { token }),
-        rawQuery('reservationguest', { token }),
-        rawQuery('guest', { token }),
-        rawQuery('staff', { token }),
-        rawQuery('payment', { token }),
+        rawQuery('reservation', { order: 'created_at.desc', token: token()! }),
+        rawQuery('room', { token: token()! }),
+        rawQuery('roomtype', { token: token()! }),
+        rawQuery('reservationguest', { token: token()! }),
+        rawQuery('guest', { token: token()! }),
+        rawQuery('staff', { token: token()! }),
+        rawQuery('payment', { token: token()! }),
     ]);
 
     const roomsArr = roomsRes.data || [];
@@ -212,7 +214,7 @@ async function fetchReservationsFromDB(): Promise<Reservation[]> {
 }
 
 async function fetchPaymentsFromDB(): Promise<any[]> {
-    const token = getCachedToken();
+    const token = getCachedToken()!;
     const { data, error } = await rawQuery('payment', { token });
     if (error) throw new Error('Payments: ' + error.message);
     return data || [];
@@ -234,7 +236,7 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         mountedRef.current = true;
 
-        // Fetch all data
+        // Rooms are always fetched (publically visible)
         fetchRoomsFromDB()
             .then(({ rooms: fetchedRooms, roomTypes }) => {
                 if (!mountedRef.current) return;
@@ -246,23 +248,32 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                 toast.error('Failed to load rooms: ' + err.message);
             });
 
-        fetchReservationsFromDB()
-            .then(fetched => {
-                if (!mountedRef.current) return;
-                setReservations(fetched);
-            })
-            .catch(err => {
-                console.error('[ReservationContext] Reservation fetch failed:', err);
-            });
+        // Only fetch reservations & payments when we have a real auth token.
+        // With just the anon key, RLS blocks SELECT on reservation/payment for
+        // authenticated-only policies → we'd get empty arrays.
+        if (isAuthenticated && getCachedToken()) {
+            fetchReservationsFromDB()
+                .then(fetched => {
+                    if (!mountedRef.current) return;
+                    setReservations(fetched);
+                })
+                .catch(err => {
+                    console.error('[ReservationContext] Reservation fetch failed:', err);
+                });
 
-        fetchPaymentsFromDB()
-            .then(fetched => {
-                if (!mountedRef.current) return;
-                setPayments(fetched);
-            })
-            .catch(err => {
-                console.error('[ReservationContext] Payment fetch failed:', err);
-            });
+            fetchPaymentsFromDB()
+                .then(fetched => {
+                    if (!mountedRef.current) return;
+                    setPayments(fetched);
+                })
+                .catch(err => {
+                    console.error('[ReservationContext] Payment fetch failed:', err);
+                });
+        } else {
+            // Not authenticated — clear stale data from a previous session
+            setReservations([]);
+            setPayments([]);
+        }
 
         // Realtime updates
         const roomCh = supabase.channel('rooms-realtime').on('postgres_changes',
