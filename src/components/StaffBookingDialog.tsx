@@ -24,6 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Plus, RefreshCw, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { CitySelect } from "@/components/CitySelect";
 
 export function StaffBookingDialog() {
     const { addWalkInReservation, rooms, checkAvailability, refreshData } = useReservations();
@@ -243,14 +244,10 @@ export function StaffBookingDialog() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="city">City</Label>
-                            <Input
-                                id="city"
-                                placeholder="Manila"
-                                maxLength={LIMITS.city}
+                            <CitySelect
                                 value={city}
-                                onChange={(e) => setCity(toTitleCase(e.target.value.slice(0, LIMITS.city)))}
+                                onChange={setCity}
                             />
-                            {charHint(LIMITS.city, city)}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="postalCode">Postal Code</Label>

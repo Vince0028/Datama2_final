@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
+import { CitySelect } from '@/components/CitySelect';
 
 export default function GuestSignup() {
     const navigate = useNavigate();
@@ -228,15 +229,13 @@ export default function GuestSignup() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="city">City</Label>
-                                <Input
-                                    id="city"
-                                    name="city"
-                                    placeholder="Manila"
-                                    maxLength={LIMITS.city}
+                                <CitySelect
                                     value={formData.city}
-                                    onChange={handleChange}
+                                    onChange={(city) => {
+                                        setFormData(prev => ({ ...prev, city }));
+                                        setError('');
+                                    }}
                                 />
-                                {charHint('city', formData.city)}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="postalCode">Postal Code</Label>
