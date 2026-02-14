@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Users, CreditCard, Banknote, Globe, BarChart3, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { reservations, getRevenueByMethod, payments } from '@/data/mockData';
+import { reservations, payments as mockPayments } from '@/data/mockData';
 import { rawQuery } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import type { Staff } from '@/types/hotel';
+import type { Staff, Payment } from '@/types/hotel';
 import {
   Table,
   TableBody,
@@ -34,9 +34,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export default function StaffReports() {
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user, updateStaff } = useAuth();
-  const revenueByMethod = getRevenueByMethod();
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
@@ -48,46 +48,77 @@ export default function StaffReports() {
 
   const isManager = user?.staffData?.Role === 'Manager';
 
-  // Fetch staff from database
+  // Fetch staff and payments from database
   useEffect(() => {
-    const fetchStaff = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
-        // Staff table has RLS - need authenticated token
-        const { data, error } = await rawQuery('staff', { order: 'first_name.asc' });
-        if (error) {
-          console.error('Error fetching staff:', error);
-          return;
+
+        // 1. Fetch Staff
+        const { data: staffData, error: staffError } = await rawQuery('staff', { order: 'first_name.asc' });
+        if (staffError) {
+          console.error('Error fetching staff:', staffError);
+        } else {
+          const mappedStaff = (staffData || []).map((s: any) => ({
+            Staff_ID: s.staff_id || s.Staff_ID,
+            First_Name: s.first_name || s.First_Name,
+            Last_Name: s.last_name || s.Last_Name,
+            Email: s.email || s.Email,
+            Role: s.role || s.Role,
+            Shift: s.shift || s.Shift || 'Day',
+            Status: s.status || s.Status || 'Active',
+            Hire_Date: s.hire_date || s.Hire_Date || '',
+            Is_Owner: s.is_owner ?? s.Is_Owner ?? false,
+          }));
+          setStaff(mappedStaff);
         }
-        console.log('Raw staff data:', data);
-        const mappedStaff = (data || []).map((s: any) => ({
-          Staff_ID: s.staff_id || s.Staff_ID,
-          First_Name: s.first_name || s.First_Name,
-          Last_Name: s.last_name || s.Last_Name,
-          Email: s.email || s.Email,
-          Role: s.role || s.Role,
-          Shift: s.shift || s.Shift || 'Day',
-          Status: s.status || s.Status || 'Active',
-          Hire_Date: s.hire_date || s.Hire_Date || '',
-          Is_Owner: s.is_owner ?? s.Is_Owner ?? false,
-        }));
-        console.log('Mapped staff:', mappedStaff);
-        setStaff(mappedStaff);
+
+        // 2. Fetch Payments
+        const { data: paymentData, error: paymentError } = await rawQuery('payment', { order: 'payment_date.desc' });
+        if (paymentError) {
+          console.error('Error fetching payments:', paymentError);
+        } else {
+          const mappedPayments = (paymentData || []).map((p: any) => ({
+            Payment_ID: p.payment_id || p.Payment_ID,
+            Reservation_ID: p.reservation_id || p.Reservation_ID,
+            Amount: p.amount || p.Amount,
+            Method: p.method || p.Method,
+            Status: p.status || p.Status,
+            Payment_Date: p.payment_date || p.Payment_Date,
+            Transaction_Reference: p.transaction_reference || p.Transaction_Reference
+          }));
+          setPayments(mappedPayments);
+        }
+
       } catch (err) {
-        console.error('Failed to fetch staff:', err);
+        console.error('Failed to fetch data:', err);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     // Only fetch if user is authenticated
     if (user) {
-      fetchStaff();
+      fetchData();
     } else {
       setIsLoading(false);
     }
   }, [user]);
-  
+
+  // Calculate Revenue by Method from REAL data
+  const revenueByMethod = Object.entries(
+    payments
+      .filter(p => p.Status === 'Paid')
+      .reduce((acc, p) => {
+        acc[p.Method] = (acc[p.Method] || 0) + Number(p.Amount);
+        return acc;
+      }, {} as Record<string, number>)
+  ).map(([method, amount]) => ({ method, amount }));
+
+  // Calculate total paid and pending from REAL data
+  const totalPaid = payments.filter(p => p.Status === 'Paid').reduce((sum, p) => sum + Number(p.Amount), 0);
+  const totalPending = payments.filter(p => p.Status === 'Pending').reduce((sum, p) => sum + Number(p.Amount), 0);
+
   // Calculate reservations handled by each staff, exclude self from list
   const staffReservations = staff
     .filter(s => s.Staff_ID !== user?.Staff_ID) // hide logged-in user
@@ -100,7 +131,7 @@ export default function StaffReports() {
   // Owner (original manager) can edit everyone; promoted managers cannot edit the owner
   const canEditStaff = (member: Staff) => isManager && !member.Is_Owner;
 
-  const formatCurrency = (amount: number) => 
+  const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 
   const roleColors: Record<string, string> = {
@@ -152,16 +183,14 @@ export default function StaffReports() {
     Card: CreditCard,
     Cash: Banknote,
     Online: Globe,
+    GCash: Globe,
+    PayPal: Globe,
   };
-
-  // Calculate total paid and pending
-  const totalPaid = payments.filter(p => p.Status === 'Paid').reduce((sum, p) => sum + p.Amount, 0);
-  const totalPending = payments.filter(p => p.Status === 'Pending').reduce((sum, p) => sum + p.Amount, 0);
 
   return (
     <div className="animate-fade-in">
-      <PageHeader 
-        title="Staff & Reports" 
+      <PageHeader
+        title="Staff & Reports"
         description="Staff directory and financial reports"
       />
 
@@ -202,7 +231,7 @@ export default function StaffReports() {
                 </TableRow>
               ) : (
                 staffReservations.map((member, index) => (
-                  <TableRow 
+                  <TableRow
                     key={member.Staff_ID}
                     className="animate-fade-in"
                     style={{ animationDelay: `${index * 50}ms` }}
@@ -257,24 +286,30 @@ export default function StaffReports() {
               Revenue by Payment Method
             </h2>
           </div>
-          
+
           <div className="h-64 mb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueByMethod}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="method" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `₱${v/1000}k`} />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {revenueByMethod.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueByMethod}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="method" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `₱${v / 1000}k`} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No payment data available.
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -282,16 +317,16 @@ export default function StaffReports() {
               const Icon = methodIcons[item.method] || CreditCard;
               const total = revenueByMethod.reduce((sum, i) => sum + i.amount, 0);
               const percentage = Math.round((item.amount / total) * 100);
-              
+
               return (
-                <div 
+                <div
                   key={item.method}
                   className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                 >
                   <div className="flex items-center gap-3">
-                    <div 
+                    <div
                       className="flex h-8 w-8 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: chartColors[index] + '20', color: chartColors[index] }}
+                      style={{ backgroundColor: chartColors[index % chartColors.length] + '20', color: chartColors[index % chartColors.length] }}
                     >
                       <Icon className="h-4 w-4" />
                     </div>

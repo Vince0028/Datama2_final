@@ -34,8 +34,8 @@
 --      One Reservation belongs to one or many Payments.
 --
 --  UserAccount and Guest/Staff
---    * One UserAccount belongs to one Guest OR one Staff member.
---      One Guest or Staff member has one UserAccount.
+--    * One UserAccount belongs to one Guest and one Staff member.
+--      One Guest and Staff member has one UserAccount.
 --
 -- ============================================================================
 
