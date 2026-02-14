@@ -26,9 +26,17 @@ interface CitySelectProps {
 
 export function CitySelect({ value, onChange, placeholder = "Select city...", disabled }: CitySelectProps) {
     const [open, setOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+
+    const filteredCities = PH_CITIES_SORTED.filter(city =>
+        city.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={(newOpen) => {
+            setOpen(newOpen);
+            if (!newOpen) setSearchTerm(""); // Reset search when closed
+        }}>
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
@@ -45,12 +53,16 @@ export function CitySelect({ value, onChange, placeholder = "Select city...", di
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                    <CommandInput placeholder="Search city..." />
+                <Command shouldFilter={false}>
+                    <CommandInput
+                        placeholder="Search city..."
+                        value={searchTerm}
+                        onValueChange={setSearchTerm}
+                    />
                     <CommandList>
-                        <CommandEmpty>No city found.</CommandEmpty>
+                        {filteredCities.length === 0 && <CommandEmpty>No city found.</CommandEmpty>}
                         <CommandGroup>
-                            {PH_CITIES_SORTED.map((city) => (
+                            {filteredCities.map((city) => (
                                 <CommandItem
                                     key={city}
                                     value={city}
