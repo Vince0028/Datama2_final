@@ -11,31 +11,31 @@
 --
 --  Room Types and Rooms
 --    * One Room Type categorizes one or many Rooms.
---      One or many Rooms is categorized by one Room Type.
+--      One or many Rooms are categorized by exactly one Room Type.
 --
 --  Staff and Reservations
 --    * One Staff member processes one or many Reservations.
---      One or many Reservations is processed by one Staff member.
+--      One or many Reservations are processed by exactly one Staff member.
 --
 --  Rooms and Reservations
---    * One Room can be booked by one or many Reservations.
---      One or many Reservations can only book one Room.
+--    * One Room is booked by one or many Reservations.
+--      One or many Reservations book exactly one Room.
 --
 --  Reservation and Reservation Guest
---    * One Reservation can include one or many Reservation Guests.
---      One or many Reservation Guests can only include one Reservation.
+--    * One Reservation includes one or many Reservation Guests.
+--      One or many Reservation Guests belong to exactly one Reservation.
 --
 --  Guest and Reservation Guest
---    * One Guest can be linked to one or many Reservation Guests.
---      One or many Reservation Guests is linked to one Guest.
+--    * One Guest is linked to one or many Reservation Guests.
+--      One or many Reservation Guests are linked to exactly one Guest.
 --
---  Payment and Reservation
---    * One or many Payments belongs to one Reservation.
---      One Reservation belongs to one or many Payments.
+--  Reservation and Payment
+--    * One Reservation has one or many Payments.
+--      One or many Payments belong to exactly one Reservation.
 --
 --  UserAccount and Guest/Staff
---    * One UserAccount belongs to one Guest and one Staff member.
---      One Guest and Staff member has one UserAccount.
+--    * One UserAccount is linked to one Guest or Staff member.
+--      One Guest or Staff member is linked to exactly one UserAccount.
 --
 -- ============================================================================
 
