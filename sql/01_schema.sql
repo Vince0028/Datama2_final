@@ -10,32 +10,32 @@
 -- ============================================================================
 --
 --  Room Types and Rooms
---    * One Room Type categorizes one or many Rooms.
---      One or many Rooms are categorized by exactly one Room Type.
+--    * Room Type categorizes one or many Rooms, and each Room is categorized by
+--      one Room Type.
 --
 --  Staff and Reservations
---    * One Staff member processes one or many Reservations.
---      One or many Reservations are processed by exactly one Staff member.
+--    * Staff member processes one or many Reservations, and each Reservation is
+--      processed by one Staff member.
 --
 --  Rooms and Reservations
---    * One Room is booked by one or many Reservations.
---      One or many Reservations book exactly one Room.
+--    * Room is booked by one or many Reservations, and each Reservation books
+--      one Room.
 --
 --  Reservation and Reservation Guest
---    * One Reservation includes one or many Reservation Guests.
---      One or many Reservation Guests belong to exactly one Reservation.
+--    * Reservation includes one or many Reservation Guests, and each Reservation
+--      Guest is included in one Reservation.
 --
 --  Guest and Reservation Guest
---    * One Guest is linked to one or many Reservation Guests.
---      One or many Reservation Guests are linked to exactly one Guest.
+--    * Guest is linked to one or many Reservation Guests, and each Reservation
+--      Guest is linked to one Guest.
 --
 --  Reservation and Payment
---    * One Reservation has one or many Payments.
---      One or many Payments belong to exactly one Reservation.
+--    * Reservation receives one or many Payments, and each Payment is for
+--      one Reservation.
 --
 --  UserAccount and Guest/Staff
---    * One UserAccount is linked to one Guest or Staff member.
---      One Guest or Staff member is linked to exactly one UserAccount.
+--    * UserAccount belongs to one Guest or Staff member, and each Guest or Staff
+--      member has one UserAccount.
 --
 -- ============================================================================
 

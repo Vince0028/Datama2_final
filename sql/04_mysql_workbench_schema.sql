@@ -6,6 +6,39 @@
 -- Disable foreign key checks temporarily to allow drop/create table operations
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- ============================================================================
+--  BUSINESS RULES
+-- ============================================================================
+--  Room Types and Rooms
+--    * Room Type categorizes one or many Rooms, and each Room is categorized by
+--      one Room Type.
+--
+--  Staff and Reservations
+--    * Staff member processes one or many Reservations, and each Reservation is
+--      processed by one Staff member.
+--
+--  Rooms and Reservations
+--    * Room is booked by one or many Reservations, and each Reservation books
+--      one Room.
+--
+--  Reservation and Reservation Guest
+--    * Reservation includes one or many Reservation Guests, and each Reservation
+--      Guest is included in one Reservation.
+--
+--  Guest and Reservation Guest
+--    * Guest is linked to one or many Reservation Guests, and each Reservation
+--      Guest is linked to one Guest.
+--
+--  Reservation and Payment
+--    * Reservation receives one or many Payments, and each Payment is for
+--      one Reservation.
+--
+--  UserAccount and Guest/Staff
+--    * UserAccount belongs to one Guest or Staff member, and each Guest or Staff
+--      member has one UserAccount.
+--
+-- ============================================================================
+
 -- Drop tables if they exist (optional, for clean slate)
 DROP TABLE IF EXISTS ReservationLog;
 DROP TABLE IF EXISTS Payment;
