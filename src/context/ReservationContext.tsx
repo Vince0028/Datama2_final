@@ -418,6 +418,17 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // ── Friendly error messages for DB constraint violations ──
+    const parseConstraintError = (msg: string): string | null => {
+        if (msg.includes('guest_name_alpha'))
+            return 'Names must be in Title Case (e.g. "Juan Dela Cruz"). At least 2 characters, no ALL CAPS or all lowercase.';
+        if (msg.includes('guest_phone_format'))
+            return 'Invalid phone number format. Use 09XXXXXXXXX or 639XXXXXXXXX.';
+        if (msg.includes('23514'))
+            return 'Some fields do not meet the required format. Please review your input.';
+        return null;
+    };
+
     // ── STAFF walk-in reservation (completely independent, no guest login needed) ──
     const addWalkInReservation = async (data: WalkInData) => {
         try {
@@ -444,7 +455,10 @@ export function ReservationProvider({ children }: { children: ReactNode }) {
                     body: { first_name: data.guestFirstName, last_name: data.guestLastName, email: data.guestEmail, phone: data.guestPhone, middle_name: '', address: data.guestAddress || '', city: data.guestCity || '', postal_code: data.guestPostalCode || null },
                     returnData: true, single: true, token,
                 });
-                if (guestError) throw new Error('Failed to create guest: ' + guestError.message);
+                if (guestError) {
+                    const friendly = parseConstraintError(guestError.message);
+                    throw new Error(friendly || 'Failed to create guest: ' + guestError.message);
+                }
                 guestId = newGuest.guest_id;
             }
 

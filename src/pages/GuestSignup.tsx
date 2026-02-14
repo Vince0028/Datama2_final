@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Loader2, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
 
 export default function GuestSignup() {
     const navigate = useNavigate();
@@ -157,6 +157,11 @@ export default function GuestSignup() {
                                     required
                                 />
                                 {charHint('firstName', formData.firstName)}
+                                {formData.firstName.length === 1 && (
+                                    <p className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
+                                        <AlertCircle className="h-3 w-3" /> Minimum 2 characters required
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lastName">Last Name</Label>
@@ -170,6 +175,11 @@ export default function GuestSignup() {
                                     required
                                 />
                                 {charHint('lastName', formData.lastName)}
+                                {formData.lastName.length === 1 && (
+                                    <p className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
+                                        <AlertCircle className="h-3 w-3" /> Minimum 2 characters required
+                                    </p>
+                                )}
                             </div>
                         </div>
 

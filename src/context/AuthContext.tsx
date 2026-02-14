@@ -170,13 +170,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const token = authData.session?.access_token;
                 console.log('Verifying staff with email:', email);
                 console.log('Token:', token ? 'present' : 'missing');
-                
-                const staffCheck = await rawQuery('staff', { 
-                    select: 'staff_id,email,role', 
+
+                const staffCheck = await rawQuery('staff', {
+                    select: 'staff_id,email,role',
                     filters: `email=eq.${encodeURIComponent(email)}`,
-                    token 
+                    token
                 });
-                
+
                 console.log('Staff check result:', staffCheck);
                 const staff = staffCheck.data?.[0] || null;
 
@@ -187,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setIsLoading(false);
                     return false;
                 }
-                
+
                 console.log('Staff verified:', staff);
             } catch (e) {
                 console.error("Staff verification error:", e);
@@ -207,6 +207,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setIsLoading(false);
         return true;
+    };
+
+    // ── Friendly error messages for DB constraint violations ──
+    const parseConstraintError = (msg: string): string | null => {
+        if (msg.includes('guest_name_alpha'))
+            return 'Names must be in Title Case (e.g. "Juan Dela Cruz"). At least 2 characters, no ALL CAPS or all lowercase.';
+        if (msg.includes('guest_phone_format'))
+            return 'Invalid phone number format. Use 09XXXXXXXXX or 639XXXXXXXXX.';
+        if (msg.includes('guest_postal_range'))
+            return 'Postal code must be between 1000 and 9999.';
+        if (msg.includes('23514'))
+            return 'Some fields do not meet the required format. Please review your input.';
+        return null;
     };
 
     const signup = async (email: string, password: string, guestData: Partial<Guest>): Promise<boolean> => {
@@ -246,7 +259,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (guestError) {
+            const friendly = parseConstraintError(guestError.message);
+            toast.error(friendly || 'Failed to create account: ' + guestError.message);
             console.error("Error creating guest record:", guestError);
+            setIsLoading(false);
+            return false;
         }
 
         // 3. Create UserAccount Record (Optional but per schema)
@@ -293,7 +310,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (error) {
-            toast.error('Failed to update profile: ' + error.message);
+            const friendly = parseConstraintError(error.message);
+            toast.error(friendly || 'Failed to update profile: ' + error.message);
             return false;
         }
 

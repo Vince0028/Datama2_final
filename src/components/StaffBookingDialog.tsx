@@ -22,7 +22,7 @@ import { useState, useEffect } from "react";
 import { useReservations } from "@/context/ReservationContext";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
 export function StaffBookingDialog() {
@@ -176,6 +176,11 @@ export function StaffBookingDialog() {
                                 onChange={(e) => setGuestFirstName(toTitleCase(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.firstName)))}
                             />
                             {charHint(LIMITS.firstName, guestFirstName)}
+                            {guestFirstName.length === 1 && (
+                                <p className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
+                                    <AlertCircle className="h-3 w-3" /> Minimum 2 characters required
+                                </p>
+                            )}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="lastName">Last Name</Label>
@@ -188,6 +193,11 @@ export function StaffBookingDialog() {
                                 onChange={(e) => setGuestLastName(toTitleCase(e.target.value.replace(/[^A-Za-z\s\-''.]/g, '').slice(0, LIMITS.lastName)))}
                             />
                             {charHint(LIMITS.lastName, guestLastName)}
+                            {guestLastName.length === 1 && (
+                                <p className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
+                                    <AlertCircle className="h-3 w-3" /> Minimum 2 characters required
+                                </p>
+                            )}
                         </div>
                     </div>
 
