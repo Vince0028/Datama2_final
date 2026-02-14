@@ -98,6 +98,16 @@ export function StaffBookingDialog() {
             return;
         }
 
+        if (!phone.trim() || !/^(09[0-9]{9}|639[0-9]{9})$/.test(phone.trim())) {
+            toast.error("Enter a valid PH phone number (e.g. 09123456789 or 639123456789)");
+            return;
+        }
+
+        if (postalCode.trim() && !/^[1-9][0-9]{3}$/.test(postalCode.trim())) {
+            toast.error("Postal code must be 4 digits (1000–9999)");
+            return;
+        }
+
         setIsSubmitting(true);
         console.log('[StaffBookingDialog] Calling addWalkInReservation with:', {
             roomId: parseInt(selectedRoomId),
@@ -226,6 +236,11 @@ export function StaffBookingDialog() {
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, LIMITS.phone))}
                             />
+                            {phone && !/^(09[0-9]{9}|639[0-9]{9})$/.test(phone) && (
+                                <p className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
+                                    <AlertCircle className="h-3 w-3" /> Format: 09XXXXXXXXX or 639XXXXXXXXX
+                                </p>
+                            )}
                         </div>
                     </div>
 

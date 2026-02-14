@@ -211,6 +211,11 @@ export default function GuestSignup() {
                                 onChange={handleChange}
                                 required
                             />
+                            {formData.phone && !/^(09[0-9]{9}|639[0-9]{9})$/.test(formData.phone) && (
+                                <p className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
+                                    <AlertCircle className="h-3 w-3" /> Format: 09XXXXXXXXX or 639XXXXXXXXX
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
