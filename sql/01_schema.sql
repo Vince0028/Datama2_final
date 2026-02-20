@@ -75,13 +75,18 @@ CREATE TABLE Guest (
     City        VARCHAR(100),
     Postal_Code INT,
     Created_At  TIMESTAMPTZ DEFAULT NOW(),
+    -- Ensures email matches a standard format (e.g., name@domain.com)
     CONSTRAINT email_format      CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+    -- Prevents saving a blank or space-only First Name
     CONSTRAINT guest_fname_not_empty CHECK (TRIM(First_Name) <> ''),
+    -- Prevents saving a blank or space-only Last Name
     CONSTRAINT guest_lname_not_empty CHECK (TRIM(Last_Name) <> ''),
+    -- Requires phone number to be a valid 10-digit local or 12-digit international format
     CONSTRAINT guest_phone_positive  CHECK (
         (Phone >= 9000000000 AND Phone <= 9999999999)         -- local:  09XX XXX XXXX (stored without leading 0)
         OR (Phone >= 639000000000 AND Phone <= 639999999999)  -- intl:   63 9XX XXX XXXX
     ),
+    -- Guest names must start with a capital letter, only use letters, and allows special characters like hyphens or apostrophes
     CONSTRAINT guest_name_alpha      CHECK (
         First_Name ~ '^([A-Z][a-z''.]+)([ \-][A-Z][a-z''.]+)*$'
         AND Last_Name ~ '^([A-Z][a-z''.]+)([ \-][A-Z][a-z''.]+)*$'
@@ -101,7 +106,9 @@ CREATE TABLE RoomType (
     Base_Rate     DECIMAL(10,2) NOT NULL,
     Description   TEXT,
     Max_Occupancy INT DEFAULT 2,
+    -- Prevents assigning negative or zero prices to a room base rate
     CONSTRAINT positive_rate CHECK (Base_Rate > 0),
+    -- Prevents setting the max occupancy size to zero or a negative number
     CONSTRAINT positive_occupancy CHECK (Max_Occupancy > 0)
 );
 
@@ -118,8 +125,11 @@ CREATE TABLE Room (
     RoomType_ID INT         NOT NULL,
     Status      VARCHAR(20) NOT NULL DEFAULT 'Available',
     Floor       INT         NOT NULL,
+    -- Ensures the room isn't placed on a 0 or negative floor number
     CONSTRAINT positive_floor    CHECK (Floor > 0),
+    -- Restricts a room status exactly to 'Available', 'Occupied', or 'Maintenance'
     CONSTRAINT room_status_check CHECK (Status IN ('Available', 'Occupied', 'Maintenance')),
+    -- Ensures the room number isn't just an empty field or spaces
     CONSTRAINT room_number_format CHECK (TRIM(Room_Number) <> ''),
     FOREIGN KEY (RoomType_ID) REFERENCES RoomType(RoomType_ID)
 );
@@ -142,11 +152,17 @@ CREATE TABLE Staff (
     Hire_Date  DATE DEFAULT CURRENT_DATE,
     Status     VARCHAR(20)  NOT NULL DEFAULT 'Active',
     Is_Owner   BOOLEAN      NOT NULL DEFAULT FALSE,
+    -- Stops you from recording a staff member without a valid first name
     CONSTRAINT staff_fname_not_empty CHECK (TRIM(First_Name) <> ''),
+    -- Stops you from recording a staff member without a valid last name
     CONSTRAINT staff_lname_not_empty CHECK (TRIM(Last_Name) <> ''),
+    -- Validates that the staff member's email has a proper format
     CONSTRAINT staff_email_format    CHECK (Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+    -- Restricts jobs to only 4 options: Manager, Housekeeping, Accountant, or ReservationAgent
     CONSTRAINT staff_role_check      CHECK (Role IN ('Manager', 'Housekeeping', 'Accountant', 'ReservationAgent')),
+    -- Restricts the work shifts to exactly Day, Night, or Rotating
     CONSTRAINT staff_shift_check     CHECK (Shift IN ('Day', 'Night', 'Rotating')),
+    -- Keeps the employment status to strictly Active, Inactive, or OnLeave
     CONSTRAINT staff_status_check    CHECK (Status IN ('Active', 'Inactive', 'OnLeave'))
 );
 
@@ -167,10 +183,13 @@ CREATE TABLE Reservation (
     Status         VARCHAR(20)    NOT NULL DEFAULT 'Pending',
     Total_Amount   DECIMAL(10,2)  NOT NULL,
     Created_At     TIMESTAMPTZ DEFAULT NOW(),
+    -- Ensures a reservation total bill is 0 or higher (no negative totals)
     CONSTRAINT positive_total CHECK (Total_Amount >= 0),
     FOREIGN KEY (Room_ID)  REFERENCES Room(Room_ID),
     FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID),
+    -- Stops impossible bookings by making sure the Check-Out date is after Check-In
     CONSTRAINT valid_dates CHECK (Check_Out > Check_In),
+    -- Locks the reservation statuses to only Pending, Booked, CheckedIn, CheckedOut, or Cancelled
     CONSTRAINT reservation_status_check CHECK (Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled'))
 );
 
@@ -189,6 +208,7 @@ CREATE TABLE ReservationGuest (
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
     FOREIGN KEY (Guest_ID)       REFERENCES Guest(Guest_ID),
     UNIQUE (Reservation_ID, Guest_ID),
+    -- Restricts the guest's role to either the Primary booker or an Additional companion
     CONSTRAINT guest_type_check CHECK (Guest_Type IN ('Primary', 'Additional'))
 );
 
@@ -205,12 +225,15 @@ CREATE TABLE Payment (
     Reservation_ID        INT            NOT NULL,
     Amount                DECIMAL(10,2)  NOT NULL,
     Payment_Date          TIMESTAMPTZ DEFAULT NOW(),
+    -- Ensures every payment made is an amount greater than 0
     CONSTRAINT positive_payment CHECK (Amount > 0),
     Method                VARCHAR(20)    NOT NULL,
     Status                VARCHAR(20)    NOT NULL DEFAULT 'Pending',
     Transaction_Reference VARCHAR(100),
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
+    -- Restricts the accepted payment method to exactly Cash, Card, GCash, or PayPal
     CONSTRAINT payment_method_check CHECK (Method IN ('Cash', 'Card', 'GCash', 'PayPal')),
+    -- Limits the payment status tracking to just Pending, Paid, or Refunded
     CONSTRAINT payment_status_check CHECK (Status IN ('Pending', 'Paid', 'Refunded'))
 );
 
@@ -231,9 +254,13 @@ CREATE TABLE ReservationLog (
     Created_At     TIMESTAMPTZ  DEFAULT NOW(),
     FOREIGN KEY (Reservation_ID) REFERENCES Reservation(Reservation_ID) ON DELETE CASCADE,
     FOREIGN KEY (Staff_ID) REFERENCES Staff(Staff_ID),
+    -- Only allows specific actions: Approved, Rejected, CheckedIn, CheckedOut, or Cancelled
     CONSTRAINT log_action_check          CHECK (Action IN ('Approved', 'Rejected', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    -- Enforces that the old status matches the valid reservation statuses (or is null)
     CONSTRAINT log_prev_status_check     CHECK (Previous_Status IS NULL OR Previous_Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    -- Enforces that the new status matches the valid reservation statuses
     CONSTRAINT log_new_status_check      CHECK (New_Status IN ('Pending', 'Booked', 'CheckedIn', 'CheckedOut', 'Cancelled')),
+    -- Ensures an action entry isn't accidentally submitted as blank
     CONSTRAINT log_action_not_empty      CHECK (TRIM(Action) <> '')
 );
 
